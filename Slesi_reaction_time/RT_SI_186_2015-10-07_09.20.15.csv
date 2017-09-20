@@ -1,0 +1,3 @@
+id,date,time,t0,order_of_test,time_start_battery,order_in_test,stimuli_type,response,reaction_time,false_responses,average_reaction_time,median_reaction_time,reaction_time_standard_deviation
+SI_186,2015-10-07,09:20:15,1444202415759,1,10087,1,p,1,661,,675.5,675.5,20.5060966544
+SI_186,2015-10-07,09:20:20,1444202415759,1,-1444202410095,2,p,1,690,,675.5,675.5,20.5060966544

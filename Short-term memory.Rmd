@@ -1,0 +1,124 @@
+---
+title: "Short-term Memory"
+author: "Benjamin Holding"
+date: "10/02/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+ipak <- function(pkg){
+    new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+    if (length(new.pkg)) 
+        install.packages(new.pkg, dependencies = TRUE)
+    sapply(pkg, require, character.only = TRUE)
+} #function to see if package is installed. Will download if not, and then opens it.
+
+packages <- c("data.table", "lubridate", "anytime", "dplyr", "ggplot2", "nlme", "tidyr", "lme4", "lmerTest") #These are the extra packages needed to merge the CSV files
+suppressPackageStartupMessages(ipak(packages))
+```
+
+
+```{r}
+
+myoriginalwd <- getwd()
+setwd("Short-term memory") #enter the location of the data here between quotation marks
+file_list <- list.files()
+L <- length(file_list) 
+
+STM_list <- lapply(file_list, read.csv, header=T, sep=",", dec=".")
+
+setwd(myoriginalwd)
+STM.names <- read.csv("STM_filenames.csv", header = F)
+
+names(STM_list) <- STM.names[,1]
+
+final.list <- mapply(cbind, STM_list, "SampleID"=STM.names[,1], SIMPLIFY=F)
+
+WakeApp_STM <- rbindlist(final.list, fill = T) #this is the complete data frame
+WakeApp_STM$id <- as.character(WakeApp_STM$id)
+WakeApp_STM$id[which(WakeApp_STM$id == "SI_106_2")] <- "SI_106"
+WakeApp_STM$id[which(WakeApp_STM$id == "SI_106_3")] <- "SI_106"
+WakeApp_STM$id[which(WakeApp_STM$id == "SI_106_4")] <- "SI_106"
+
+WakeApp_STM$id <- as.numeric(gsub("[^0-9]","",WakeApp_STM$id))
+colnames(WakeApp_STM)[1] <- "ID"
+
+slesi.key <- read.csv("SleSI_Masterkey.csv")
+
+WakeApp_STM_complete <- inner_join(WakeApp_STM, slesi.key)
+
+WakeApp_STM_complete$SampleID <- gsub("STM_", "", WakeApp_STM_complete$SampleID)
+WakeApp_STM_complete$SampleID <- gsub(".csv", "", WakeApp_STM_complete$SampleID)
+
+STM_Complete_TIDY <- WakeApp_STM_complete[c(-1,-2,-3)] %>% 
+  separate(SampleID, into = c("ID", "time"), sep = "\\_")
+                             
+STM_Complete_TIDY$time <- as.integer(STM_Complete_TIDY$time)
+
+data.check <- as.dataframe(unique(STM_Complete_TIDY[,c(12,15,16)]))
+data.check$ID <- as.integer(data.check$ID)
+data.check2 <- inner_join(data.check, slesi.key, by = "ID")
+identical(data.check2$SD.x, data.check2$SD.y) #this checks that all the participants have the correct SD coding
+```
+
+#multileveling the STM data
+```{r}
+
+# assessing the best time polynomial
+model.3a<-glmer(correct~1 + (1|ID), data=STM_Complete_TIDY, family=binomial)
+model.3b<-glmer(correct~time + (1|ID), data=STM_Complete_TIDY, family=binomial)
+model.3c<-glmer(correct~time + I(time^2) + (1|ID), data=STM_Complete_TIDY, family=binomial)
+model.3d<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=STM_Complete_TIDY, family=binomial)
+
+anova(model.3a, model.3b, model.3c,model.3d) #Cubic effect (model.3d) is best
+
+# assessing the best random effects term (taking just a linear effect of time)
+model.4a<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=STM_Complete_TIDY, family=binomial) 
+model.4b<-glmer(correct~time + I(time^2) + I(time^3) + (time|ID), data=STM_Complete_TIDY, family=binomial)
+model.4c<-glmer(correct~time + I(time^2) + I(time^3) + (time+I(time^2)|ID), data=STM_Complete_TIDY, family=binomial)
+#model.4d<-glmer(correct~time + I(time^2) + I(time^3) + (time+I(time^2)+ I(time^3)|ID), data=STM_Complete_TIDY, family=binomial)
+
+anova(model.4a,model.4b, model.4c) #Quadratic/cubic random effects is best, but sig. convergence problem and takes SO long to run. let's go with quadratic
+
+#additing in variables can that explain intercept and slope variability
+
+model.6a<-glmer(correct~time + I(time^2) + I(time^3) + (time|ID), data=STM_Complete_TIDY, family=binomial)
+model.6b<-glmer(correct~time + I(time^2) + I(time^3) +SD + (time|ID), data=STM_Complete_TIDY, family=binomial)
+
+anova(model.6a,model.6b) #SD predicts intercept :(
+
+model.6c <-glmer(correct~time*SD + I(time^2) + I(time^3) + (time|ID), data=STM_Complete_TIDY, family=binomial)
+anova(model.6a,model.6c)  #SD explains linear effect of time
+
+model.6d <- glmer(correct~time*SD + I(time^2)*SD + I(time^3) + (time|ID), data=STM_Complete_TIDY, family=binomial)
+anova(model.6a,model.6d) #SD explains quadratic effect of time
+
+model.6e <- glmer(correct~time*SD + I(time^2)*SD + I(time^3)*SD + (time|ID), data=STM_Complete_TIDY, family=binomial)
+anova(model.6a,model.6e) #SD explains cubic effect of time
+
+#
+summary(model.6e)
+```
+
+
+#plotting the final model
+```{r}
+STM_Complete_TIDY$SD <- as.factor(STM_Complete_TIDY$SD)
+
+STM.final.model <- glmer(correct~time*SD + I(time^2)*SD + I(time^3)*SD + (time|ID), data=STM_Complete_TIDY, family=binomial)
+
+ggplot(STM_Complete_TIDY, aes(time, correct, colour=SD)) + 
+  stat_summary(fun.data=mean_se, geom="pointrange") + 
+  labs(y="correct", x="Time point") + 
+  theme_bw() + scale_color_manual(values=c("red", "blue"))
+last_plot() + stat_summary(aes(y=fitted(STM.final.model)), fun.y=mean, geom="line")
+
+ggplot(STM_Complete_TIDY, aes(time, correct, colour=SD)) + 
+  labs(y="STM (correct score)", x="Time point") + 
+  theme_bw() + stat_summary(aes(y=fitted(STM.final.model)), fun.y=mean, geom="point") + stat_smooth(method = "lm", formula  =y ~ poly(x,3))
+```

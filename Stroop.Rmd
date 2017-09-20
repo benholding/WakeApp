@@ -1,0 +1,207 @@
+---
+title: "Stroop"
+author: "Benjamin Holding"
+date: "10/02/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+ipak <- function(pkg){
+    new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+    if (length(new.pkg)) 
+        install.packages(new.pkg, dependencies = TRUE)
+    sapply(pkg, require, character.only = TRUE)
+} #function to see if package is installed. Will download if not, and then opens it.
+
+packages <- c("data.table", "lubridate", "anytime", "dplyr", "ggplot2", "nlme", "tidyr", "lme4", "lmerTest") #These are the extra packages needed to merge the CSV files
+suppressPackageStartupMessages(ipak(packages))
+```
+
+
+```{r}
+
+myoriginalwd <- getwd()
+setwd("Stroop") #enter the location of the data here between quotation marks
+file_list <- list.files()
+L <- length(file_list) 
+
+Stroop_list <- lapply(file_list, read.csv, header=T, sep=",", dec=".")
+
+setwd(myoriginalwd)
+Stroop.names <- read.csv("Stroop_filenames.csv", header = F)
+
+names(Stroop_list) <- Stroop.names[,1]
+
+final.list <- mapply(cbind, Stroop_list, "SampleID"=Stroop.names[,1], SIMPLIFY=F)
+
+WakeApp_Stroop <- rbindlist(final.list, fill = T) #this is the complete data frame
+WakeApp_Stroop$id <- as.character(WakeApp_Stroop$id)
+WakeApp_Stroop$id[which(WakeApp_Stroop$id == "SI_106_2")] <- "SI_106"
+WakeApp_Stroop$id[which(WakeApp_Stroop$id == "SI_106_3")] <- "SI_106"
+WakeApp_Stroop$id[which(WakeApp_Stroop$id == "SI_106_4")] <- "SI_106"
+
+WakeApp_Stroop$id <- as.numeric(gsub("[^0-9]","",WakeApp_Stroop$id))
+colnames(WakeApp_Stroop)[1] <- "ID"
+
+slesi.key <- read.csv("SleSI_Masterkey.csv")
+
+WakeApp_Stroop_complete <- inner_join(WakeApp_Stroop, slesi.key)
+
+WakeApp_Stroop_complete$SampleID <- gsub("STROOP_", "", WakeApp_Stroop_complete$SampleID)
+WakeApp_Stroop_complete$SampleID <- gsub(".csv", "", WakeApp_Stroop_complete$SampleID)
+sample_n(WakeApp_Stroop_complete[,c(1,18,15)], 10) #check that everything is matched correctely
+
+Stroop_Complete_TIDY <- WakeApp_Stroop_complete[c(-1,-2,-3)] %>% 
+  separate(SampleID, into = c("ID", "time"), sep = "\\_")
+                             
+Stroop_Complete_TIDY$time <- as.integer(Stroop_Complete_TIDY$time)
+
+
+Stroop_inconguent_complete <- Stroop_Complete_TIDY[which(Stroop_Complete_TIDY$congruent == 0),]
+
+```
+
+#multileveling the Stroop data
+```{r}
+
+model.1<-glm(correct~time, data=Stroop_inconguent_complete)
+summary(model.1)
+
+model.2<-glmer(correct~time + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+anova(model.1,model.2, test="Chisq") #okay think this works now
+summary(model.2)
+
+VarCorr(model.2) #don't think this works for glmer
+
+# assessing the best time polynomial
+model.3a<-glmer(correct~1 + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+model.3b<-glmer(correct~time + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+model.3c<-glmer(correct~time + I(time^2) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+model.3d<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+
+anova(model.3a, model.3b, model.3c,model.3d) #the cubic  model is the best
+
+summary(model.3d)
+
+# assessing the best random effects term (all failing to converge - try a different optimiser???)
+model.4a<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+model.4b<-glmer(correct~time + I(time^2) + I(time^3) + (time|ID), data=Stroop_inconguent_complete, family=binomial)
+model.4c <- glmer(correct~time + I(time^2) + I(time^3) + (time+I(time^2)|ID), data=Stroop_inconguent_complete, family=binomial)
+model.4d <- glmer(correct~time + I(time^2) + I(time^3) + (time+I(time^2)+I(time^3)|ID), data=Stroop_inconguent_complete, family=binomial)
+
+
+anova(model.4a,model.4b, model.4c, model.4d) #having random slopes for quadratic time is best. But I am using no random effects, because otherwise the models really don't run well.
+
+#additing in variables can that explain intercept and slope variability
+
+model.6a<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+model.6b<-glmer(correct~time +SD+ I(time^2) + I(time^3) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+
+anova(model.6a,model.6b)
+summary(model.6b) #condition doesn't predict intercept, which is good because there should be no difference
+
+model.6c <-glmer(correct~time*SD + I(time^2) + I(time^3) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+anova(model.6a,model.6c) #sleep dep doesn't predict linear time effect
+
+model.6d <- glmer(correct~time*SD + I(time^2)*SD + I(time^3) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+anova(model.6a,model.6d)
+
+model.6e <- glmer(correct~time*SD + I(time^2)*SD + I(time^3)*SD + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+anova(model.6a,model.6e)
+#best model
+summary(model.6e) #
+```
+
+#plotting the final model
+```{r}
+Stroop_inconguent_complete$SD <- as.factor(Stroop_inconguent_complete$SD)
+
+Stroop.final.model <- glmer(correct~time*SD + I(time^2)*SD + I(time^3)*SD + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+
+ggplot(Stroop_inconguent_complete, aes(time, correct, colour=SD)) + 
+  stat_summary(fun.data=mean_se, geom="pointrange") + 
+  labs(y="correct", x="Time point") + 
+  theme_bw() + scale_color_manual(values=c("red", "blue"))
+last_plot() + stat_summary(aes(y=fitted(Stroop.final.model)), fun.y=mean, geom="line")
+
+ggplot(Stroop_inconguent_complete, aes(time, correct, colour=SD)) + 
+  labs(y="Stroop (correct score)", x="Time point") + 
+  theme_bw() + stat_summary(aes(y=fitted(Stroop.final.model)), fun.y=mean, geom="point") + stat_smooth(method = "lm", formula  =y ~ poly(x,3))
+```
+
+#####Lets check if it took longer to get the correct answer for incongruent stroop
+#multileveling the RT data
+
+###argh I can't get it to work properly. Fuck it, come back later
+```{r}
+
+Stroop_inconguent_complete_correct <- Stroop_inconguent_complete[which(Stroop_inconguent_complete$correct == 1),]
+
+model.ignore<-lm(reaction_time~time, data=Stroop_inconguent_complete_correct)
+summary(model.ignore)
+
+model.1<-gls(reaction_time~1, data=Stroop_inconguent_complete_correct, na.action=na.omit)
+summary(model.1)
+
+model.2<-lme(reaction_time~1, random=~1|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit)
+anova(model.1,model.2) #model with random effects is NOT better... don't know why...
+summary(model.2)
+
+VarCorr(model.2)
+440022/(440022+14992990000) #25% of variance can be attributed to variance in RT between individuals
+
+# assessing the best time polynomial
+model.3a<-lme(reaction_time~1, random=~1|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML")
+model.3b<-lme(reaction_time~time, random=~1|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML")
+model.3c<-lme(reaction_time~time+I(time^2), random=~1|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML")
+model.3d<-lme(reaction_time~time+I(time^2)+I(time^3), random=~1|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML") 
+
+anova(model.3a, model.3b, model.3c, model.3d) #the cubic model is the best
+
+summary(model.3d)
+
+# assessing the best random effects term
+model.4a<-lme(reaction_time~time+I(time^2)+I(time^3), random=~1|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="REML") 
+
+model.4b<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="REML") 
+
+model.4c<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="REML") 
+
+model.4d<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)+I(time^3)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="REML") #doesn't converge
+
+anova(model.4a,model.4b,model.4c) #having random slopes for quadratic term for time is best
+
+#checking model autocorrelation
+model.5a<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="REML", correlation = corAR1()) 
+anova(model.4c, model.5a) #there is significant autocorrelation - what do i do?
+
+#determining heterosedasticity
+model.5b<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="REML", weights = varExp(form = ~time)) 
+anova(model.4c, model.5b) #there is also heteroscedasticity - what do i do?
+
+#additing in variables can that explain intercept and slope variability
+model.6a<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML") 
+model.6b<-lme(reaction_time~time+I(time^2)+I(time^3)+SD, random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML") 
+
+anova(model.6a,model.6b)#condition doesn't predict intercept, which is good because there should be no difference
+
+model.6c <-lme(reaction_time~time*SD+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML") 
+
+anova(model.6a,model.6c) #sleep deprivation explains variance in slope of time (linear)
+
+model.6d <-lme(reaction_time~time*SD+I(time^2)*SD+I(time^3), random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML") #sleep deprivation explains variance in the slope of time (quadratic)
+anova(model.6a,model.6d)
+
+model.6e <-lme(reaction_time~time*SD+I(time^2)*SD+I(time^3)*SD, random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML") #sleep deprivation explains variance in the slope of time (quadratic)
+anova(model.6a,model.6e) #sleep deprivation explains variance in the slope of time (cubic)
+
+#best model
+summary(model.6e)
+
+
+
+```

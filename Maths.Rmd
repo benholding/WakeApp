@@ -1,0 +1,173 @@
+---
+title: "Maths"
+author: "Benjamin Holding"
+date: "10/02/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+ipak <- function(pkg){
+    new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+    if (length(new.pkg)) 
+        install.packages(new.pkg, dependencies = TRUE)
+    sapply(pkg, require, character.only = TRUE)
+} #function to see if package is installed. Will download if not, and then opens it.
+
+packages <- c("data.table", "lubridate", "anytime", "dplyr", "ggplot2", "nlme", "tidyr", "lme4", "lmerTest") #These are the extra packages needed to merge the CSV files
+suppressPackageStartupMessages(ipak(packages))
+```
+
+
+```{r}
+
+myoriginalwd <- getwd()
+setwd("Maths") #enter the location of the data here between quotation marks
+file_list <- list.files()
+L <- length(file_list) 
+
+Maths_list <- lapply(file_list, read.csv, header=T, sep=",", dec=".")
+
+setwd(myoriginalwd)
+Maths.names <- read.csv("Maths_filenames.csv", header = F)
+
+names(Maths_list) <- Maths.names[,1]
+
+final.list <- mapply(cbind, Maths_list, "SampleID"=Maths.names[,1], SIMPLIFY=F)
+
+WakeApp_Maths <- rbindlist(final.list, fill = T) #this is the complete data frame
+WakeApp_Maths$id <- as.character(WakeApp_Maths$id)
+WakeApp_Maths$id[which(WakeApp_Maths$id == "SI_106_2")] <- "SI_106"
+WakeApp_Maths$id[which(WakeApp_Maths$id == "SI_106_3")] <- "SI_106"
+WakeApp_Maths$id[which(WakeApp_Maths$id == "SI_106_4")] <- "SI_106"
+
+WakeApp_Maths$id <- as.numeric(gsub("[^0-9]","",WakeApp_Maths$id))
+colnames(WakeApp_Maths)[1] <- "ID"
+
+slesi.key <- read.csv("SleSI_Masterkey.csv")
+
+WakeApp_Maths_complete <- inner_join(WakeApp_Maths, slesi.key)
+
+WakeApp_Maths_complete$SampleID <- gsub("MATHS_", "", WakeApp_Maths_complete$SampleID)
+WakeApp_Maths_complete$SampleID <- gsub(".csv", "", WakeApp_Maths_complete$SampleID)
+
+Maths_Complete_TIDY <- WakeApp_Maths_complete[c(-1,-2,-3)] %>% 
+  separate(SampleID, into = c("ID", "time"), sep = "\\_")
+                             
+Maths_Complete_TIDY$time <- as.integer(Maths_Complete_TIDY$time)
+
+sample_n(Maths_Complete_TIDY[,c(10,13,14)], 10) #check that everything is matched correctely
+
+
+```
+
+#multileveling the Maths data
+```{r}
+
+# assessing the best time polynomial
+model.3a<-glmer(correct~1 + (1|ID), data=Maths_Complete_TIDY, family=binomial)
+model.3b<-glmer(correct~time + (1|ID), data=Maths_Complete_TIDY, family=binomial)
+model.3c<-glmer(correct~time + I(time^2) + (1|ID), data=Maths_Complete_TIDY, family=binomial)
+model.3d<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=Maths_Complete_TIDY, family=binomial)
+
+anova(model.3a, model.3b, model.3c,model.3d) #Not even finding an effect of time! But quadratic is closest
+
+# assessing the best random effects term (taking just a linear effect of time)
+model.4a<-glmer(correct~time + I(time^2) + (1|ID), data=Maths_Complete_TIDY, family=binomial) 
+model.4b<-glmer(correct~time + I(time^2) + (time|ID), data=Maths_Complete_TIDY, family=binomial)
+model.4c<-glmer(correct~time + I(time^2) + (time+I(time^2)|ID), data=Maths_Complete_TIDY, family=binomial)
+
+anova(model.4a,model.4b, model.4c) #no benefit of random slopes
+
+#additing in variables can that explain intercept and slope variability
+
+model.6a<-glmer(correct~time + I(time^2) + (1|ID), data=Maths_Complete_TIDY, family=binomial) 
+model.6b<-glmer(correct~time + I(time^2) +SD + (1|ID), data=Maths_Complete_TIDY, family=binomial)
+
+anova(model.6a,model.6b) #SD doesn't predict intercept
+
+model.6c <-glmer(correct~time*SD + I(time^2) + (1|ID), data=Maths_Complete_TIDY, family=binomial)
+anova(model.6a,model.6c)  #this is kinda better than before (not sig.), SD1 predict change in time
+
+model.6d <- glmer(correct~time*SD + I(time^2)*SD + (1|ID), data=Maths_Complete_TIDY, family=binomial)
+anova(model.6a,model.6d) #seems worse and doesn't converge
+
+#best model (not really a great model, but it's the best. It has a quadratic time effect, but only interaction between SD and linear time)
+summary(model.6c)
+```
+
+#plotting the final model
+```{r}
+Maths_Complete_TIDY$SD <- as.factor(Maths_Complete_TIDY$SD)
+
+Maths.final.model <- glmer(correct~time*SD + I(time^2) + (1|ID), data=Maths_Complete_TIDY, family=binomial)
+
+ggplot(Maths_Complete_TIDY, aes(time, correct, colour=SD)) + 
+  stat_summary(fun.data=mean_se, geom="pointrange") + 
+  labs(y="correct", x="Time point") + 
+  theme_bw() + scale_color_manual(values=c("red", "blue"))
+last_plot() + stat_summary(aes(y=fitted(Maths.final.model)), fun.y=mean, geom="line")
+
+ggplot(Maths_Complete_TIDY, aes(time, correct, colour=SD)) + 
+  labs(y="Maths (correct score)", x="Time point") + 
+  theme_bw() + stat_summary(aes(y=fitted(Maths.final.model)), fun.y=mean, geom="point") + stat_smooth(method = "lm", formula  =y ~ poly(x,2))
+```
+
+#######TRYING TO MODEL THE REACTION TIMES
+```{r}
+
+Maths_complete_correct <- Maths_Complete_TIDY[which(Maths_Complete_TIDY$correct == 1),]
+
+# assessing the best time polynomial
+model.7a<-lme(time_m~1, random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="ML")
+model.7b<-lme(time_m~time, random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="ML")
+model.7c<-lme(time_m~time+I(time^2), random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="ML")
+model.7d<-lme(time_m~time+I(time^2)+I(time^3), random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="ML") 
+
+anova(model.7a, model.7b, model.7c, model.7d)
+
+summary(model.7b) #best to just have linear time 
+
+# assessing the best random effects term
+model.8a<-lme(time_m~time, random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="REML") 
+
+model.8b<-lme(time_m~time, random=~time|ID, data=Maths_complete_correct, na.action=na.omit, method="REML") 
+
+anova(model.4a,model.4b) #having no random slopes is best
+
+#additing in variables can that explain intercept and slope variability
+model.9a<-lme(time_m~time, random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="ML") 
+model.9b<-lme(time_m~time+SD, random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="ML") 
+
+anova(model.9a,model.9b)#condition predicts intercept! which is bad
+summary(model.9b)
+
+model.9c <-lme(time_m~time*SD, random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="ML") 
+
+anova(model.9a,model.9c) #sleep deprivation explains variance in slope of time (linear)
+
+#best model
+summary(model.9c)
+```
+
+#plotting the reaction times for correct maths answers
+
+
+#plotting the final model - seems like something is wrong with SD reaction times for time 0.
+```{r}
+Maths_complete_correct$SD <- as.factor(Maths_complete_correct$SD)
+
+ggplot(Maths_complete_correct, aes(time, time_m, colour=SD)) + 
+  stat_summary(fun.data=mean_se, geom="pointrange") + 
+  labs(y="Reaction Time (ms)", x="Time point") + 
+  theme_bw() + scale_color_manual(values=c("red", "blue"))
+last_plot() + stat_summary(aes(y=fitted(model.9c)), fun.y=mean, geom="line")
+
+ggplot(Maths_complete_correct, aes(time, time_m, colour=SD)) + 
+  labs(y="Reaction Time (ms)", x="Time point") + 
+  theme_bw() + stat_summary(aes(y=fitted(model.9c)), fun.y=mean, geom="point") + stat_smooth(method = "lm")
+```
+
