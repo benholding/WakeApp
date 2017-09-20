@@ -1,0 +1,128 @@
+---
+title: "SleSI_workingmemory"
+author: "Benjamin Holding"
+date: "10/02/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+ipak <- function(pkg){
+    new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+    if (length(new.pkg)) 
+        install.packages(new.pkg, dependencies = TRUE)
+    sapply(pkg, require, character.only = TRUE)
+} #function to see if package is installed. Will download if not, and then opens it.
+
+packages <- c("data.table", "lubridate", "anytime", "dplyr", "ggplot2", "nlme", "tidyr", "lme4", "lmerTest") #These are the extra packages needed to merge the CSV files
+suppressPackageStartupMessages(ipak(packages))
+```
+
+
+```{r}
+
+myoriginalwd <- getwd()
+setwd("Working memory") #enter the location of the data here between quotation marks
+file_list <- list.files()
+L <- length(file_list) 
+
+WM_list <- lapply(file_list, read.csv, header=T, sep=",", dec=".")
+
+setwd(myoriginalwd)
+WM.names <- read.csv("WorkingMemory_NewNames.csv", header = F)
+
+names(WM_list) <- WM.names[,1]
+
+final.list <- mapply(cbind, WM_list, "SampleID"=WM.names[,1], SIMPLIFY=F)
+
+WakeApp_WM <- rbindlist(final.list, fill = T) #this is the complete data frame
+WakeApp_WM$id <- as.character(WakeApp_WM$id)
+WakeApp_WM$id[which(WakeApp_WM$id == "SI_106_2")] <- "SI_106"
+WakeApp_WM$id[which(WakeApp_WM$id == "SI_106_3")] <- "SI_106"
+WakeApp_WM$id[which(WakeApp_WM$id == "SI_106_4")] <- "SI_106"
+
+WakeApp_WM$id <- as.numeric(gsub("[^0-9]","",WakeApp_WM$id))
+colnames(WakeApp_WM)[1] <- "ID"
+
+slesi.key <- read.csv("SleSI_Masterkey.csv")
+
+WakeApp_WM_complete <- inner_join(WakeApp_WM, slesi.key)
+
+WakeApp_WM_complete$SampleID <- gsub("WM_", "", WakeApp_WM_complete$SampleID)
+WakeApp_WM_complete$SampleID <- gsub(".csv", "", WakeApp_WM_complete$SampleID)
+
+WM_Complete_TIDY <- WakeApp_WM_complete[c(-1,-2,-3)] %>% 
+  separate(SampleID, into = c("ID", "time"), sep = "\\_")
+                             
+WM_Complete_TIDY$time <- as.integer(WM_Complete_TIDY$time)
+
+```
+
+
+#multileveling the WM data
+#have to change to LME4 because nlme can't do logistic :/
+```{r}
+
+model.1<-glm(correct~time, data=WM_Complete_TIDY, family=binomial)
+summary(model.1)
+
+model.2<-glmer(correct~time + (1|ID), data=WM_Complete_TIDY, family=binomial)
+anova(model.1,model.2) #does't work with glmer
+summary(model.2)
+
+VarCorr(model.2) #doesn't work with glmer
+0.006044853/(0.006044853+0.154561265) #25% of variance can be attributed to variance in RT between individuals
+
+# assessing the best time polynomial
+model.3a<-glmer(correct~1 + (1|ID), data=WM_Complete_TIDY, family=binomial)
+model.3b<-glmer(correct~time + (1|ID), data=WM_Complete_TIDY, family=binomial)
+model.3c<-glmer(correct~time + I(time^2) + (1|ID), data=WM_Complete_TIDY, family=binomial)
+model.3d<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=WM_Complete_TIDY, family=binomial)
+
+anova(model.3a, model.3b, model.3c,model.3d) #the normal linear model is the best (but the quadratic is nearly significant)
+
+summary(model.3b)
+
+# assessing the best random effects term
+model.4a<-glmer(correct~time + (1|ID), data=WM_Complete_TIDY, family=binomial) 
+model.4b<-glmer(correct~time + (time|ID), data=WM_Complete_TIDY, family=binomial)
+
+anova(model.4a,model.4b) #having random slopes for time is best
+
+#additing in variables can that explain intercept and slope variability
+
+model.6a<-glmer(correct~time + (1|ID), data=WM_Complete_TIDY, family=binomial) 
+model.6b<-glmer(correct~time +SD + (time|ID), data=WM_Complete_TIDY, family=binomial)
+
+anova(model.6a,model.6b)
+summary(model.6b) #time no longer sig after adding SD (but neither is SD)
+
+model.6c <-glmer(correct~time*SD + (time|ID), data=WM_Complete_TIDY, family=binomial)
+
+anova(model.6a,model.6c) #sleep deprivation explains variance in slope of time (linear)
+
+#best model
+summary(model.6c)
+```
+
+
+#plotting the final model
+```{r}
+WM_Complete_TIDY$SD <- as.factor(WM_Complete_TIDY$SD)
+
+WM.final.model <-glmer(correct~time*SD + (time|ID), data=WM_Complete_TIDY, family=binomial)
+
+ggplot(WM_Complete_TIDY, aes(time, correct, colour=SD)) + 
+  stat_summary(fun.data=mean_se, geom="pointrange") + 
+  labs(y="correct", x="Time point") + 
+  theme_bw() + scale_color_manual(values=c("red", "blue"))
+last_plot() + stat_summary(aes(y=fitted(WM.final.model)), fun.y=mean, geom="line")
+
+ggplot(WM_Complete_TIDY, aes(time, correct, colour=SD)) + 
+  labs(y="Working memory (correct score)", x="Time point") + 
+  theme_bw() + stat_summary(aes(y=fitted(WM.final.model)), fun.y=mean, geom="point") + stat_smooth(method = "lm")
+```
+
