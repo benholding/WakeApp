@@ -1,15 +1,19 @@
 ---
 title: "SleSI_workingmemory"
 author: "Benjamin Holding"
-date: "10/02/2017"
-output: html_document
+date: 'Last Updated: `r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r, include=FALSE}
 ipak <- function(pkg){
     new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
     if (length(new.pkg)) 
@@ -22,7 +26,7 @@ suppressPackageStartupMessages(ipak(packages))
 ```
 
 
-```{r}
+```{r, include=FALSE}
 
 myoriginalwd <- getwd()
 setwd("Working memory") #enter the location of the data here between quotation marks
@@ -61,21 +65,16 @@ WM_Complete_TIDY$time <- as.integer(WM_Complete_TIDY$time)
 
 ```
 
-
-#multileveling the WM data
-#have to change to LME4 because nlme can't do logistic :/
+##remove problem responses
+(must respond between 0.1 and 10 seconds)
 ```{r}
+WM_Complete_TIDY <- WM_Complete_TIDY[which(WM_Complete_TIDY$response_time > 0.1 & WM_Complete_TIDY$response_time < 10),]
+```
 
-model.1<-glm(correct~time, data=WM_Complete_TIDY, family=binomial)
-summary(model.1)
 
-model.2<-glmer(correct~time + (1|ID), data=WM_Complete_TIDY, family=binomial)
-anova(model.1,model.2) #does't work with glmer
-summary(model.2)
-
-VarCorr(model.2) #doesn't work with glmer
-0.006044853/(0.006044853+0.154561265) #25% of variance can be attributed to variance in RT between individuals
-
+#Working memory Correct score analysis
+###Assessing the best growth curve model
+```{r}
 # assessing the best time polynomial
 model.3a<-glmer(correct~1 + (1|ID), data=WM_Complete_TIDY, family=binomial)
 model.3b<-glmer(correct~time + (1|ID), data=WM_Complete_TIDY, family=binomial)
@@ -86,43 +85,98 @@ anova(model.3a, model.3b, model.3c,model.3d) #the normal linear model is the bes
 
 summary(model.3b)
 
-# assessing the best random effects term
+#additing in fixed variables
+
 model.4a<-glmer(correct~time + (1|ID), data=WM_Complete_TIDY, family=binomial) 
-model.4b<-glmer(correct~time + (time|ID), data=WM_Complete_TIDY, family=binomial)
+model.4b<-glmer(correct~time +SD + (1|ID), data=WM_Complete_TIDY, family=binomial)
+model.4c<-glmer(correct~time*SD + (1|ID), data=WM_Complete_TIDY, family=binomial)
 
-anova(model.4a,model.4b) #having random slopes for time is best
+anova(model.4a,model.4b, model.4c) #best to add SD:time interaction as predictor
 
-#additing in variables can that explain intercept and slope variability
-
-model.6a<-glmer(correct~time + (1|ID), data=WM_Complete_TIDY, family=binomial) 
-model.6b<-glmer(correct~time +SD + (time|ID), data=WM_Complete_TIDY, family=binomial)
-
-anova(model.6a,model.6b)
-summary(model.6b) #time no longer sig after adding SD (but neither is SD)
-
-model.6c <-glmer(correct~time*SD + (time|ID), data=WM_Complete_TIDY, family=binomial)
-
-anova(model.6a,model.6c) #sleep deprivation explains variance in slope of time (linear)
-
-#best model
-summary(model.6c)
+# Is it worthwhile adding a random effect of time within individuals?
+model.5a<-glmer(correct~time*SD + (1|ID), data=WM_Complete_TIDY, family=binomial) 
+# model.5b<-glmer(correct~time*SD + (time|ID), data=WM_Complete_TIDY, family=binomial) # doesn't converge
+#anova(model.5a,model.5b) #Model 5b doesn't converge so stick to 6a
 ```
 
+###Best Model
+There is an interaction between the condition and linear effect of time
+```{r}
+#best model (pure linear model with SleepCondition interacting with time)
+summary(model.5a)
+```
 
-#plotting the final model
+###plotting the raw data and best model
 ```{r}
 WM_Complete_TIDY$SD <- as.factor(WM_Complete_TIDY$SD)
 
-WM.final.model <-glmer(correct~time*SD + (time|ID), data=WM_Complete_TIDY, family=binomial)
+WM.final.model <-glmer(correct~time*SD + (1|ID), data=WM_Complete_TIDY, family=binomial)
 
+#raw data plot with 95% confidence intervals
 ggplot(WM_Complete_TIDY, aes(time, correct, colour=SD)) + 
-  stat_summary(fun.data=mean_se, geom="pointrange") + 
+  stat_summary(fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + 
   labs(y="correct", x="Time point") + 
-  theme_bw() + scale_color_manual(values=c("red", "blue"))
-last_plot() + stat_summary(aes(y=fitted(WM.final.model)), fun.y=mean, geom="line")
+  theme_bw() + scale_color_manual(values=c("red", "blue")) +
+  ggtitle("Working Memory raw data plot with 95% confidence intervals") + 
+  stat_summary(fun.y=mean, geom="line") 
 
+#fitted model (aka predictive values) plot with 95% confidence intervals
 ggplot(WM_Complete_TIDY, aes(time, correct, colour=SD)) + 
+  ggtitle("Working memory model fitted (predicted) data plot with 95% confidence intervals") +
   labs(y="Working memory (correct score)", x="Time point") + 
-  theme_bw() + stat_summary(aes(y=fitted(WM.final.model)), fun.y=mean, geom="point") + stat_smooth(method = "lm")
+  theme_bw() + stat_summary(aes(y=fitted(WM.final.model)), fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + stat_smooth(method = "lm")
+```
+
+#Working Memory RT analysis
+###Assessing the best growth curve model
+```{r}
+
+WM_complete_correct <- WM_Complete_TIDY[which(WM_Complete_TIDY$correct == 1),]
+
+# assessing the best time polynomial
+model.7a<-lme(response_time~1, random=~1|ID, data=WM_complete_correct, na.action=na.omit, method="ML")
+model.7b<-lme(response_time~time, random=~1|ID, data=WM_complete_correct, na.action=na.omit, method="ML")
+model.7c<-lme(response_time~time+I(time^2), random=~1|ID, data=WM_complete_correct, na.action=na.omit, method="ML")
+model.7d<-lme(response_time~time+I(time^2)+I(time^3), random=~1|ID, data=WM_complete_correct, na.action=na.omit, method="ML") 
+
+anova(model.7a, model.7b, model.7c, model.7d) #best to have quadratic effect
+
+# assessing the best random effects term
+model.8a<-lme(response_time~time+I(time^2), random=~1|ID, data=WM_complete_correct, na.action=na.omit, method="ML")
+model.8b<-lme(response_time~time+I(time^2), random=~time|ID, data=WM_complete_correct, na.action=na.omit, method="ML")
+model.8c<-lme(response_time~time+I(time^2), random=~time+I(time^2)|ID, data=WM_complete_correct, na.action=na.omit, method="ML")
+
+anova(model.8a,model.8b, model.8c) #having random slopes for quadratic is best
+
+#additing in variables can that explain intercept and slope variability
+model.9a<-lme(response_time~time+I(time^2), random=~time+I(time^2)|ID, data=WM_complete_correct, na.action=na.omit, method="ML")
+model.9b<-lme(response_time~SD+time+I(time^2), random=~time+I(time^2)|ID, data=WM_complete_correct, na.action=na.omit, method="ML")
+model.9c <-lme(response_time~SD*time+I(time^2), random=~time+I(time^2)|ID, data=WM_complete_correct, na.action=na.omit, method="ML")
+model.9d <- lme(response_time~SD*time+SD*I(time^2), random=~time+I(time^2)|ID, data=WM_complete_correct, na.action=na.omit, method="ML")
+
+anova(model.9a,model.9b, model.9c, model.9d) #Best model is the one without SD
+```
+
+### best model
+SD is not included
+```{r}
+#best model
+summary(model.9a) #Cubic effect of time, but  effect of SD
+```
+
+###plotting the data
+```{r}
+#raw data plot with 95% confidence intervals
+ggplot(WM_complete_correct, aes(time, response_time, colour=SD)) + 
+  stat_summary(fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + 
+  labs(y="Reaction Time (seconds)", x="Time point") + 
+  theme_bw() + scale_color_manual(values=c("red", "blue")) +
+  ggtitle("Working memory RT raw data plot with 95% confidence intervals") + stat_summary(fun.y=mean, geom="line") 
+
+#fitted model (aka predictive values) plot with 95% confidence intervals
+ggplot(WM_complete_correct, aes(time, response_time, colour=SD)) + 
+  labs(y="Reaction Time (seconds)", x="Time point") +
+  ggtitle("Working memory RT model fitted (predicted) data plot with 95% confidence intervals") + 
+  theme_bw() + stat_summary(aes(y=fitted(model.9a)), fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + stat_smooth(method = "lm", formula  =y ~ poly(x,2))
 ```
 

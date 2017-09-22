@@ -1,15 +1,19 @@
 ---
 title: "Reaction Time"
 author: "Benjamin Holding"
-date: "10/02/2017"
-output: html_document
+date: 'Last Updated: `r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r, include=FALSE}
 ipak <- function(pkg){
     new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
     if (length(new.pkg)) 
@@ -22,7 +26,7 @@ suppressPackageStartupMessages(ipak(packages))
 ```
 
 
-```{r}
+```{r, include=FALSE}
 
 myoriginalwd <- getwd()
 setwd("Slesi_reaction_time_renamed") #enter the location of the data here between quotation marks
@@ -59,16 +63,18 @@ KSS_Complete_TIDY <- Questionnaires_KSS_complete[c(-1,-2,-3)] %>%
                              
 KSS_Complete_TIDY$time <- as.integer(KSS_Complete_TIDY$time)
 
-KSS_Complete_TIDY <- KSS_Complete_TIDY[which(KSS_Complete_TIDY$reaction_time > 100 & KSS_Complete_TIDY$reaction_time < 4000),]
-
 ```
 
-#multileveling the RT data
+#removing problem answers
+(only between 100-4000milliseconds)
 ```{r}
+KSS_Complete_TIDY <- KSS_Complete_TIDY[which(KSS_Complete_TIDY$reaction_time > 100 & KSS_Complete_TIDY$reaction_time < 4000),]
+```
 
-model.ignore<-lm(reaction_time~time, data=KSS_Complete_TIDY)
-summary(model.ignore)
+# Assessing the best growth curve model
 
+### Should I add a random intercept? - yes 
+```{r}
 model.1<-gls(reaction_time~1, data=KSS_Complete_TIDY, na.action=na.omit)
 summary(model.1)
 
@@ -78,17 +84,24 @@ summary(model.2)
 
 VarCorr(model.2)
 10122.76/(10122.76+31280.16) #25% of variance can be attributed to variance in RT between individuals
+```
 
+### Should I have a time polynomial effect? - yes (cubic)
+```{r}
 # assessing the best time polynomial
 model.3a<-lme(reaction_time~1, random=~1|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="ML")
-model.3b<-lme(reaction_time~time, random=~1|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="ML")
+# model.3b<-lme(reaction_time~time, random=~1|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="ML") # DOESN'T CONVERGE
 model.3c<-lme(reaction_time~time+I(time^2), random=~1|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="ML")
 model.3d<-lme(reaction_time~time+I(time^2)+I(time^3), random=~1|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="ML") 
 
-anova(model.3a, model.3b, model.3c, model.3d) #the cubic model is the best
+anova(model.3a, model.3c, model.3d) #the cubic model is the best
 
 summary(model.3d)
+```
 
+
+### Should I add random slopes? - Yes (random slopes up to quadratic effect)
+```{r}
 # assessing the best random effects term
 model.4a<-lme(reaction_time~time+I(time^2)+I(time^3), random=~1|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="REML") 
 
@@ -96,18 +109,13 @@ model.4b<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time|ID, data=KSS_
 
 model.4c<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="REML") 
 
-model.4d<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)+I(time^3)|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="REML") #doesn't converge
+# model.4d<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)+I(time^3)|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="REML") #doesn't converge
 
 anova(model.4a,model.4b,model.4c) #having random slopes for quadratic term for time is best
+```
 
-#checking model autocorrelation
-model.5a<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="REML", correlation = corAR1()) 
-anova(model.4c, model.5a) #there is significant autocorrelation - what do i do?
-
-#determining heterosedasticity
-model.5b<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="REML", weights = varExp(form = ~time)) 
-anova(model.4c, model.5b) #there is also heteroscedasticity - what do i do?
-
+### adding the sleep condition as a predictor
+```{r}
 #additing in variables can that explain intercept and slope variability
 model.6a<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="ML") 
 model.6b<-lme(reaction_time~time+I(time^2)+I(time^3)+SD, random=~time+I(time^2)|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="ML") 
@@ -123,37 +131,32 @@ anova(model.6a,model.6d)
 
 model.6e <-lme(reaction_time~time*SD+I(time^2)*SD+I(time^3)*SD, random=~time+I(time^2)|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="ML") #sleep deprivation explains variance in the slope of time (quadratic)
 anova(model.6a,model.6e) #sleep deprivation explains variance in the slope of time (cubic)
-
-#best model
-summary(model.6e)
-
-
-
 ```
+
+#The best fitting growth curve model
+There is an interaction between the condition and linear effect of time, the quadratic effect of time and the cubic effect of time.
+The p value for tells you whether the difference in the curvature for the two condition is statistically significant. 
+```{r}
+summary(model.6e)
+```
+
 
 #plotting the final model
 ```{r}
 KSS_Complete_TIDY$SD <- as.factor(KSS_Complete_TIDY$SD)
 RT.final.model <-lme(reaction_time~time*SD+I(time^2)*SD+I(time^3)*SD, random=~time+I(time^2)|ID, data=KSS_Complete_TIDY, na.action=na.omit, method="ML")
 
+#raw data plot with 95% confidence intervals
 ggplot(KSS_Complete_TIDY, aes(time, reaction_time, colour=SD)) + 
-  stat_summary(fun.data=mean_se, geom="pointrange") + 
+  stat_summary(fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + 
   labs(y="Reaction Time (ms)", x="Time point") + 
-  theme_bw() + scale_color_manual(values=c("red", "blue"))
-last_plot() + stat_summary(aes(y=fitted(RT.final.model)), fun.y=mean, geom="line")
+  theme_bw() + scale_color_manual(values=c("red", "blue")) +
+  ggtitle("RT raw data plot with 95% confidence intervals") + stat_summary(fun.y=mean, geom="line")
 
+#fitted model (aka predictive values) plot with 95% confidence intervals
 ggplot(KSS_Complete_TIDY, aes(time, reaction_time, colour=SD)) + 
-  labs(y="Reaction Time (ms)", x="Time point") + 
-  theme_bw() + stat_summary(aes(y=fitted(RT.final.model)), fun.y=mean, geom="point") + stat_smooth(method = "lm", formula  =y ~ poly(x,3))
-
-
-
-http://www.danmirman.org/gca
-https://biologyforfun.wordpress.com/2014/03/12/generalized-linear-mixed-models-in-ecology-and-in-r/
-  http://stackoverflow.com/questions/20562795/plotting-proper-mixed-models-regression-slope
-http://stackoverflow.com/questions/32196641/how-to-plot-predicted-values-with-standard-errors-for-lmer-model-results
-http://brockferguson.com/tutorials/R-gca-workshop/tutorial4-growth-curve-analysis.html
-http://www.eyetracking-r.com/vignettes/growth_curve_analysis
-http://mindingthebrain.blogspot.se/2012/08/plotting-model-fits.html
+  labs(y="Reaction Time (ms)", x="Time point") +
+  ggtitle("RT model fitted (predicted) data plot with 95% confidence intervals") + 
+  theme_bw() + stat_summary(aes(y=fitted(RT.final.model)), fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + stat_smooth(method = "lm", formula  =y ~ poly(x,3))
 ```
 

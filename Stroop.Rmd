@@ -1,15 +1,19 @@
 ---
 title: "Stroop"
 author: "Benjamin Holding"
-date: "10/02/2017"
-output: html_document
+date: 'Last Updated: `r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
 ```
 
-```{r}
+```{r packages, include=FALSE}
 ipak <- function(pkg){
     new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
     if (length(new.pkg)) 
@@ -21,8 +25,7 @@ packages <- c("data.table", "lubridate", "anytime", "dplyr", "ggplot2", "nlme", 
 suppressPackageStartupMessages(ipak(packages))
 ```
 
-
-```{r}
+```{r data, include=FALSE}
 
 myoriginalwd <- getwd()
 setwd("Stroop") #enter the location of the data here between quotation marks
@@ -60,148 +63,139 @@ Stroop_Complete_TIDY <- WakeApp_Stroop_complete[c(-1,-2,-3)] %>%
                              
 Stroop_Complete_TIDY$time <- as.integer(Stroop_Complete_TIDY$time)
 
-
-Stroop_inconguent_complete <- Stroop_Complete_TIDY[which(Stroop_Complete_TIDY$congruent == 0),]
-
 ```
 
-#multileveling the Stroop data
-```{r}
+##remove problem responses
+(must respond between 0.1 and 10 seconds)
+```{r time}
+Stroop_Complete_TIDY <- Stroop_Complete_TIDY[which(Stroop_Complete_TIDY$reaction_time > 100 & Stroop_Complete_TIDY$reaction_time < 10000),]
+```
 
-model.1<-glm(correct~time, data=Stroop_inconguent_complete)
-summary(model.1)
-
-model.2<-glmer(correct~time + (1|ID), data=Stroop_inconguent_complete, family=binomial)
-anova(model.1,model.2, test="Chisq") #okay think this works now
-summary(model.2)
-
-VarCorr(model.2) #don't think this works for glmer
+# Stroop correct responses
+###Finding the best growth curve model
+```{r growth curve all}
 
 # assessing the best time polynomial
-model.3a<-glmer(correct~1 + (1|ID), data=Stroop_inconguent_complete, family=binomial)
-model.3b<-glmer(correct~time + (1|ID), data=Stroop_inconguent_complete, family=binomial)
-model.3c<-glmer(correct~time + I(time^2) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
-model.3d<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+model.3a<-glmer(correct~1 + (1|ID), data=Stroop_Complete_TIDY, family=binomial)
+model.3b<-glmer(correct~time + (1|ID), data=Stroop_Complete_TIDY, family=binomial)
+model.3c<-glmer(correct~ time + I(time^2) + (1|ID), data=Stroop_Complete_TIDY, family=binomial)
+model.3d<-glmer(correct~ time + I(time^2) + I(time^3) + (1|ID), data=Stroop_Complete_TIDY, family=binomial) #definately best but convergence problems
 
 anova(model.3a, model.3b, model.3c,model.3d) #the cubic  model is the best
 
-summary(model.3d)
+#summary(model.3d)
 
-# assessing the best random effects term (all failing to converge - try a different optimiser???)
-model.4a<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
-model.4b<-glmer(correct~time + I(time^2) + I(time^3) + (time|ID), data=Stroop_inconguent_complete, family=binomial)
-model.4c <- glmer(correct~time + I(time^2) + I(time^3) + (time+I(time^2)|ID), data=Stroop_inconguent_complete, family=binomial)
-model.4d <- glmer(correct~time + I(time^2) + I(time^3) + (time+I(time^2)+I(time^3)|ID), data=Stroop_inconguent_complete, family=binomial)
+# not going to add random slopes since convergence is already poor
 
+# how does congruence fit in
 
-anova(model.4a,model.4b, model.4c, model.4d) #having random slopes for quadratic time is best. But I am using no random effects, because otherwise the models really don't run well.
+model.5a <- glmer(correct~ time + I(time^2) + I(time^3) + (1|ID), data=Stroop_Complete_TIDY, family=binomial)
+model.5b <- glmer(correct~ congruent + time + I(time^2) + I(time^3) + (1|ID), data=Stroop_Complete_TIDY, family=binomial)
+model.5c <- glmer(correct~ congruent*time + I(time^2) + I(time^3) + (1|ID), data=Stroop_Complete_TIDY, family=binomial) #best
+model.5d <- glmer(correct~ congruent*time + congruent*I(time^2) + I(time^3) + (1|ID), data=Stroop_Complete_TIDY, family=binomial)
+model.5e <- glmer(correct~ congruent*time + congruent*I(time^2) + congruent*I(time^3) + (1|ID), data=Stroop_Complete_TIDY, family=binomial)
 
-#additing in variables can that explain intercept and slope variability
+anova(model.5a, model.5b, model.5c,model.5d, model.5e)
+#does how does SD fit in?
 
-model.6a<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
-model.6b<-glmer(correct~time +SD+ I(time^2) + I(time^3) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
+model.6a<- glmer(correct~ congruent*time + I(time^2) + I(time^3) + (1|ID), data=Stroop_Complete_TIDY, family=binomial)
+model.6b<- glmer(correct~ congruent*time + SD + I(time^2) + I(time^3) + (1|ID), data=Stroop_Complete_TIDY, family=binomial)
+model.6c <- glmer(correct~ congruent*time*SD + I(time^2) + I(time^3) + (1|ID), data=Stroop_Complete_TIDY, family=binomial)
+model.6d <- glmer(correct~ congruent*time*SD + SD*I(time^2) + I(time^3) + (1|ID), data=Stroop_Complete_TIDY, family=binomial) #best
+model.6e <- glmer(correct~ congruent*time*SD + SD*I(time^2) + SD*I(time^3) + (1|ID), data=Stroop_Complete_TIDY, family=binomial)
 
-anova(model.6a,model.6b)
-summary(model.6b) #condition doesn't predict intercept, which is good because there should be no difference
+anova(model.6a,model.6b, model.6c,model.6d,model.6e)
 
-model.6c <-glmer(correct~time*SD + I(time^2) + I(time^3) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
-anova(model.6a,model.6c) #sleep dep doesn't predict linear time effect
+```
 
-model.6d <- glmer(correct~time*SD + I(time^2)*SD + I(time^3) + (1|ID), data=Stroop_inconguent_complete, family=binomial)
-anova(model.6a,model.6d)
-
-model.6e <- glmer(correct~time*SD + I(time^2)*SD + I(time^3)*SD + (1|ID), data=Stroop_inconguent_complete, family=binomial)
-anova(model.6a,model.6e)
+###Best model for correct Stroop responses
+predicts score from congruency, time, time2, time3, SD, congruency:time, congruency:SD, SD:time2
+```{r}
 #best model
-summary(model.6e) #
+summary(model.6d)
 ```
 
-#plotting the final model
+
+###plotting the raw data and final model
 ```{r}
-Stroop_inconguent_complete$SD <- as.factor(Stroop_inconguent_complete$SD)
+Stroop_Complete_TIDY$SD <- as.factor(Stroop_Complete_TIDY$SD)
+Stroop_Complete_TIDY$congruent <- as.factor(Stroop_Complete_TIDY$congruent)
+levels(Stroop_Complete_TIDY$congruent) <- c("Incongruent", "Congruent")
 
-Stroop.final.model <- glmer(correct~time*SD + I(time^2)*SD + I(time^3)*SD + (1|ID), data=Stroop_inconguent_complete, family=binomial)
 
-ggplot(Stroop_inconguent_complete, aes(time, correct, colour=SD)) + 
-  stat_summary(fun.data=mean_se, geom="pointrange") + 
+Stroop.final.model <- model.6d
+
+ggplot(Stroop_Complete_TIDY, aes(time, correct, colour=SD)) + 
+  stat_summary(fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange")  + 
   labs(y="correct", x="Time point") + 
-  theme_bw() + scale_color_manual(values=c("red", "blue"))
-last_plot() + stat_summary(aes(y=fitted(Stroop.final.model)), fun.y=mean, geom="line")
+  facet_wrap( ~ congruent) +
+  ggtitle("Stroop raw data plot (accuracy) with 95% confidence intervals") +
+  theme_bw() + scale_color_manual(values=c("red", "blue")) + stat_summary(fun.y=mean, geom="line") 
 
-ggplot(Stroop_inconguent_complete, aes(time, correct, colour=SD)) + 
-  labs(y="Stroop (correct score)", x="Time point") + 
-  theme_bw() + stat_summary(aes(y=fitted(Stroop.final.model)), fun.y=mean, geom="point") + stat_smooth(method = "lm", formula  =y ~ poly(x,3))
+ggplot(model.6d, aes(time, correct, colour=SD)) + 
+  labs(y="Stroop (correct score)", x="Time point") +
+    ggtitle("Stroop fitted model data plot (accuracy)") +
+  theme_bw() + stat_summary(aes(y=fitted(model.6d)), fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + stat_smooth(method = "lm", formula  =y ~ poly(x,3)) 
 ```
 
-#####Lets check if it took longer to get the correct answer for incongruent stroop
-#multileveling the RT data
-
-###argh I can't get it to work properly. Fuck it, come back later
+#Stroop reaction time (for correct responses)
+###Finding best growth curve model
 ```{r}
-
-Stroop_inconguent_complete_correct <- Stroop_inconguent_complete[which(Stroop_inconguent_complete$correct == 1),]
-
-model.ignore<-lm(reaction_time~time, data=Stroop_inconguent_complete_correct)
-summary(model.ignore)
-
-model.1<-gls(reaction_time~1, data=Stroop_inconguent_complete_correct, na.action=na.omit)
-summary(model.1)
-
-model.2<-lme(reaction_time~1, random=~1|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit)
-anova(model.1,model.2) #model with random effects is NOT better... don't know why...
-summary(model.2)
-
-VarCorr(model.2)
-440022/(440022+14992990000) #25% of variance can be attributed to variance in RT between individuals
+Stroop_complete_correct <- Stroop_Complete_TIDY[which(Stroop_Complete_TIDY$correct == 1),]
 
 # assessing the best time polynomial
-model.3a<-lme(reaction_time~1, random=~1|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML")
-model.3b<-lme(reaction_time~time, random=~1|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML")
-model.3c<-lme(reaction_time~time+I(time^2), random=~1|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML")
-model.3d<-lme(reaction_time~time+I(time^2)+I(time^3), random=~1|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML") 
+model.3a<-lme(reaction_time~1, random=~1|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML")
+model.3b<-lme(reaction_time~time, random=~1|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML")
+model.3c<-lme(reaction_time~time+I(time^2), random=~1|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML")
+model.3d<-lme(reaction_time~time+I(time^2)+I(time^3), random=~1|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML") 
 
 anova(model.3a, model.3b, model.3c, model.3d) #the cubic model is the best
 
 summary(model.3d)
 
 # assessing the best random effects term
-model.4a<-lme(reaction_time~time+I(time^2)+I(time^3), random=~1|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="REML") 
+model.4a<-lme(reaction_time~time+I(time^2)+I(time^3), random=~1|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML") 
+model.4b<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML") #best
+model.4c<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML")
+#model.4d<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)+I(time^3)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML") #convergence problem
 
-model.4b<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="REML") 
+anova(model.4a,model.4b, model.4c) #having random slopes for quadratic term for time is best
 
-model.4c<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="REML") 
+#Adding congruence
+model.5a<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML")
+model.5b<-lme(reaction_time~time+congruent+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML") #best
+model.5c<-lme(reaction_time~time*congruent+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML")
+model.5d<-lme(reaction_time~time*congruent+congruent*I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML")
+model.5e<-lme(reaction_time~time*congruent+congruent*I(time^2)+congruent*I(time^3), random=~time+I(time^2)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML")
 
-model.4d<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)+I(time^3)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="REML") #doesn't converge
+anova(model.5a,model.5b, model.5c, model.5d, model.5e) 
 
-anova(model.4a,model.4b,model.4c) #having random slopes for quadratic term for time is best
+#adding sleep condition
+model.6a<-lme(reaction_time~time+congruent+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML")
+model.6b<-lme(reaction_time~time+SD+congruent+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML") 
+#model.6c<-lme(reaction_time~time*SD+congruent+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML") #convegence problem
+model.6d<-lme(reaction_time~time*SD+congruent+SD*I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML")
+model.6e<-lme(reaction_time~time*SD+congruent+SD*I(time^2)+SD*I(time^3), random=~time+I(time^2)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML") #best
+model.6f<-lme(reaction_time~time*SD*congruent+SD*I(time^2)+SD*I(time^3), random=~time+I(time^2)|ID, data=Stroop_complete_correct, na.action=na.omit, method="ML") 
+anova(model.6a,model.6b,model.6d,model.6e,model.6f)
+```
 
-#checking model autocorrelation
-model.5a<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="REML", correlation = corAR1()) 
-anova(model.4c, model.5a) #there is significant autocorrelation - what do i do?
-
-#determining heterosedasticity
-model.5b<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="REML", weights = varExp(form = ~time)) 
-anova(model.4c, model.5b) #there is also heteroscedasticity - what do i do?
-
-#additing in variables can that explain intercept and slope variability
-model.6a<-lme(reaction_time~time+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML") 
-model.6b<-lme(reaction_time~time+I(time^2)+I(time^3)+SD, random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML") 
-
-anova(model.6a,model.6b)#condition doesn't predict intercept, which is good because there should be no difference
-
-model.6c <-lme(reaction_time~time*SD+I(time^2)+I(time^3), random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML") 
-
-anova(model.6a,model.6c) #sleep deprivation explains variance in slope of time (linear)
-
-model.6d <-lme(reaction_time~time*SD+I(time^2)*SD+I(time^3), random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML") #sleep deprivation explains variance in the slope of time (quadratic)
-anova(model.6a,model.6d)
-
-model.6e <-lme(reaction_time~time*SD+I(time^2)*SD+I(time^3)*SD, random=~time+I(time^2)|ID, data=Stroop_inconguent_complete_correct, na.action=na.omit, method="ML") #sleep deprivation explains variance in the slope of time (quadratic)
-anova(model.6a,model.6e) #sleep deprivation explains variance in the slope of time (cubic)
-
-#best model
+###best model (correct answers only)
+```{r}
 summary(model.6e)
+```
 
+### plotting raw data and model
+```{r}
+Stroop.final.model <- model.6e
 
+ggplot(Stroop_complete_correct, aes(time, reaction_time, colour=SD)) + 
+  stat_summary(fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange")  + 
+  labs(y="correct", x="Time point") + 
+  facet_wrap( ~ congruent) +
+  theme_bw() + scale_color_manual(values=c("red", "blue")) + stat_summary(fun.y=mean, geom="line") 
 
+ggplot(Stroop_complete_correct, aes(time, reaction_time, colour=SD)) + 
+  labs(y="Stroop (correct score)", x="Time point") +
+  theme_bw() + stat_summary(aes(y=fitted(Stroop.final.model)), fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + stat_smooth(method = "lm", formula  =y ~ poly(x,3)) 
 ```

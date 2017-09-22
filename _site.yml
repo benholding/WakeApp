@@ -1,0 +1,19 @@
+name: "WakeApp Slesi data analysis"
+output_dir: "."
+navbar:
+  title: "WakeApp: SleSI"
+  left:
+    - text: "Home"
+      href: index.html
+    - text: "Reaction time"
+      href: Reaction_Time.html
+    - text: "Working memory"
+      href: WorkingMemory.html
+    - text: "Short-term memory"
+      href: Short-term_memory.html 
+    - text: "Maths (Score/RT)"
+      href: Maths.html 
+    - text: "Stroop (Score/RT)"
+      href: Stroop.html 
+    - text: "About"
+      href: about.html

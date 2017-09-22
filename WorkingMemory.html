@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Benjamin Holding" />
+
+
+<title>SleSI_workingmemory</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+  padding-left: 25px;
+  text-indent: 0;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">WakeApp: SleSI</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="Reaction_Time.html">Reaction time</a>
+</li>
+<li>
+  <a href="WorkingMemory.html">Working memory</a>
+</li>
+<li>
+  <a href="Short-term_memory.html">Short-term memory</a>
+</li>
+<li>
+  <a href="Maths.html">Maths (Score/RT)</a>
+</li>
+<li>
+  <a href="Stroop.html">Stroop (Score/RT)</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">SleSI_workingmemory</h1>
+<h4 class="author"><em>Benjamin Holding</em></h4>
+<h4 class="date"><em>Last Updated: September 22, 2017</em></h4>
+
+</div>
+
+
+<div id="remove-problem-responses" class="section level2">
+<h2>remove problem responses</h2>
+<p>(must respond between 0.1 and 10 seconds)</p>
+<pre class="r"><code>WM_Complete_TIDY &lt;- WM_Complete_TIDY[which(WM_Complete_TIDY$response_time &gt; 0.1 &amp; WM_Complete_TIDY$response_time &lt; 10),]</code></pre>
+</div>
+<div id="working-memory-correct-score-analysis" class="section level1">
+<h1>Working memory Correct score analysis</h1>
+<div id="assessing-the-best-growth-curve-model" class="section level3">
+<h3>Assessing the best growth curve model</h3>
+<pre class="r"><code># assessing the best time polynomial
+model.3a&lt;-glmer(correct~1 + (1|ID), data=WM_Complete_TIDY, family=binomial)
+model.3b&lt;-glmer(correct~time + (1|ID), data=WM_Complete_TIDY, family=binomial)
+model.3c&lt;-glmer(correct~time + I(time^2) + (1|ID), data=WM_Complete_TIDY, family=binomial)
+model.3d&lt;-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=WM_Complete_TIDY, family=binomial)</code></pre>
+<pre><code>## Warning in checkConv(attr(opt, &quot;derivs&quot;), opt$par, ctrl = control
+## $checkConv, : Model failed to converge with max|grad| = 0.00325052 (tol =
+## 0.001, component 1)</code></pre>
+<pre class="r"><code>anova(model.3a, model.3b, model.3c,model.3d) #the normal linear model is the best (but the quadratic is nearly significant)</code></pre>
+<pre><code>## Data: WM_Complete_TIDY
+## Models:
+## model.3a: correct ~ 1 + (1 | ID)
+## model.3b: correct ~ time + (1 | ID)
+## model.3c: correct ~ time + I(time^2) + (1 | ID)
+## model.3d: correct ~ time + I(time^2) + I(time^3) + (1 | ID)
+##          Df    AIC    BIC  logLik deviance  Chisq Chi Df Pr(&gt;Chisq)  
+## model.3a  2 6059.0 6072.5 -3027.5   6055.0                           
+## model.3b  3 6056.3 6076.5 -3025.2   6050.3 4.6781      1    0.03055 *
+## model.3c  4 6058.3 6085.2 -3025.1   6050.3 0.0565      1    0.81206  
+## model.3d  5 6057.8 6091.4 -3023.9   6047.8 2.4634      1    0.11653  
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>summary(model.3b)</code></pre>
+<pre><code>## Generalized linear mixed model fit by maximum likelihood (Laplace
+##   Approximation) [glmerMod]
+##  Family: binomial  ( logit )
+## Formula: correct ~ time + (1 | ID)
+##    Data: WM_Complete_TIDY
+## 
+##      AIC      BIC   logLik deviance df.resid 
+##   6056.3   6076.5  -3025.2   6050.3     6158 
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -3.1203  0.3716  0.4399  0.5142  0.8696 
+## 
+## Random effects:
+##  Groups Name        Variance Std.Dev.
+##  ID     (Intercept) 0.2402   0.4901  
+## Number of obs: 6161, groups:  ID, 166
+## 
+## Fixed effects:
+##             Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept)  1.56359    0.06993  22.360   &lt;2e-16 ***
+## time        -0.06394    0.02944  -2.172   0.0299 *  
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Correlation of Fixed Effects:
+##      (Intr)
+## time -0.680</code></pre>
+<pre class="r"><code>#additing in fixed variables
+
+model.4a&lt;-glmer(correct~time + (1|ID), data=WM_Complete_TIDY, family=binomial) 
+model.4b&lt;-glmer(correct~time +SD + (1|ID), data=WM_Complete_TIDY, family=binomial)
+model.4c&lt;-glmer(correct~time*SD + (1|ID), data=WM_Complete_TIDY, family=binomial)
+
+anova(model.4a,model.4b, model.4c) #best to add SD:time interaction as predictor</code></pre>
+<pre><code>## Data: WM_Complete_TIDY
+## Models:
+## model.4a: correct ~ time + (1 | ID)
+## model.4b: correct ~ time + SD + (1 | ID)
+## model.4c: correct ~ time * SD + (1 | ID)
+##          Df    AIC    BIC  logLik deviance  Chisq Chi Df Pr(&gt;Chisq)  
+## model.4a  3 6056.3 6076.5 -3025.2   6050.3                           
+## model.4b  4 6056.4 6083.3 -3024.2   6048.4 1.8796      1    0.17037  
+## model.4c  5 6053.2 6086.8 -3021.6   6043.2 5.2853      1    0.02151 *
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code># Is it worthwhile adding a random effect of time within individuals?
+model.5a&lt;-glmer(correct~time*SD + (1|ID), data=WM_Complete_TIDY, family=binomial) 
+# model.5b&lt;-glmer(correct~time*SD + (time|ID), data=WM_Complete_TIDY, family=binomial) # doesn&#39;t converge
+#anova(model.5a,model.5b) #Model 5b doesn&#39;t converge so stick to 6a</code></pre>
+</div>
+<div id="best-model" class="section level3">
+<h3>Best Model</h3>
+<p>There is an interaction between the condition and linear effect of time</p>
+<pre class="r"><code>#best model (pure linear model with SleepCondition interacting with time)
+summary(model.5a)</code></pre>
+<pre><code>## Generalized linear mixed model fit by maximum likelihood (Laplace
+##   Approximation) [glmerMod]
+##  Family: binomial  ( logit )
+## Formula: correct ~ time * SD + (1 | ID)
+##    Data: WM_Complete_TIDY
+## 
+##      AIC      BIC   logLik deviance df.resid 
+##   6053.2   6086.8  -3021.6   6043.2     6156 
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -3.0411  0.3694  0.4382  0.5127  0.9103 
+## 
+## Random effects:
+##  Groups Name        Variance Std.Dev.
+##  ID     (Intercept) 0.2374   0.4872  
+## Number of obs: 6161, groups:  ID, 166
+## 
+## Fixed effects:
+##             Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept)  1.51703    0.09955  15.239   &lt;2e-16 ***
+## time         0.01040    0.04366   0.238   0.8117    
+## SD           0.08411    0.13475   0.624   0.5325    
+## time:SD     -0.13804    0.05978  -2.309   0.0209 *  
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Correlation of Fixed Effects:
+##         (Intr) time   SD    
+## time    -0.682              
+## SD      -0.713  0.503       
+## time:SD  0.498 -0.738 -0.696</code></pre>
+</div>
+<div id="plotting-the-raw-data-and-best-model" class="section level3">
+<h3>plotting the raw data and best model</h3>
+<pre class="r"><code>WM_Complete_TIDY$SD &lt;- as.factor(WM_Complete_TIDY$SD)
+
+WM.final.model &lt;-glmer(correct~time*SD + (1|ID), data=WM_Complete_TIDY, family=binomial)
+
+#raw data plot with 95% confidence intervals
+ggplot(WM_Complete_TIDY, aes(time, correct, colour=SD)) + 
+  stat_summary(fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom=&quot;pointrange&quot;) + 
+  labs(y=&quot;correct&quot;, x=&quot;Time point&quot;) + 
+  theme_bw() + scale_color_manual(values=c(&quot;red&quot;, &quot;blue&quot;)) +
+  ggtitle(&quot;Working Memory raw data plot with 95% confidence intervals&quot;) + 
+  stat_summary(fun.y=mean, geom=&quot;line&quot;) </code></pre>
+<p><img src="WorkingMemory_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<pre class="r"><code>#fitted model (aka predictive values) plot with 95% confidence intervals
+ggplot(WM_Complete_TIDY, aes(time, correct, colour=SD)) + 
+  ggtitle(&quot;Working memory model fitted (predicted) data plot with 95% confidence intervals&quot;) +
+  labs(y=&quot;Working memory (correct score)&quot;, x=&quot;Time point&quot;) + 
+  theme_bw() + stat_summary(aes(y=fitted(WM.final.model)), fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom=&quot;pointrange&quot;) + stat_smooth(method = &quot;lm&quot;)</code></pre>
+<p><img src="WorkingMemory_files/figure-html/unnamed-chunk-6-2.png" width="672" /></p>
+</div>
+</div>
+<div id="working-memory-rt-analysis" class="section level1">
+<h1>Working Memory RT analysis</h1>
+<div id="assessing-the-best-growth-curve-model-1" class="section level3">
+<h3>Assessing the best growth curve model</h3>
+<pre class="r"><code>WM_complete_correct &lt;- WM_Complete_TIDY[which(WM_Complete_TIDY$correct == 1),]
+
+# assessing the best time polynomial
+model.7a&lt;-lme(response_time~1, random=~1|ID, data=WM_complete_correct, na.action=na.omit, method=&quot;ML&quot;)
+model.7b&lt;-lme(response_time~time, random=~1|ID, data=WM_complete_correct, na.action=na.omit, method=&quot;ML&quot;)
+model.7c&lt;-lme(response_time~time+I(time^2), random=~1|ID, data=WM_complete_correct, na.action=na.omit, method=&quot;ML&quot;)
+model.7d&lt;-lme(response_time~time+I(time^2)+I(time^3), random=~1|ID, data=WM_complete_correct, na.action=na.omit, method=&quot;ML&quot;) 
+
+anova(model.7a, model.7b, model.7c, model.7d) #best to have quadratic effect</code></pre>
+<pre><code>##          Model df      AIC      BIC    logLik   Test   L.Ratio p-value
+## model.7a     1  3 15590.17 15609.68 -7792.084                         
+## model.7b     2  4 15586.65 15612.67 -7789.323 1 vs 2  5.522767  0.0188
+## model.7c     3  5 15568.20 15600.73 -7779.102 2 vs 3 20.441648  &lt;.0001
+## model.7d     4  6 15568.90 15607.92 -7778.448 3 vs 4  1.308269  0.2527</code></pre>
+<pre class="r"><code># assessing the best random effects term
+model.8a&lt;-lme(response_time~time+I(time^2), random=~1|ID, data=WM_complete_correct, na.action=na.omit, method=&quot;ML&quot;)
+model.8b&lt;-lme(response_time~time+I(time^2), random=~time|ID, data=WM_complete_correct, na.action=na.omit, method=&quot;ML&quot;)
+model.8c&lt;-lme(response_time~time+I(time^2), random=~time+I(time^2)|ID, data=WM_complete_correct, na.action=na.omit, method=&quot;ML&quot;)
+
+anova(model.8a,model.8b, model.8c) #having random slopes for quadratic is best</code></pre>
+<pre><code>##          Model df      AIC      BIC    logLik   Test   L.Ratio p-value
+## model.8a     1  5 15568.20 15600.73 -7779.102                         
+## model.8b     2  7 15564.22 15609.75 -7775.109 1 vs 2  7.986222  0.0184
+## model.8c     3 10 15551.67 15616.72 -7765.837 2 vs 3 18.543377  0.0003</code></pre>
+<pre class="r"><code>#additing in variables can that explain intercept and slope variability
+model.9a&lt;-lme(response_time~time+I(time^2), random=~time+I(time^2)|ID, data=WM_complete_correct, na.action=na.omit, method=&quot;ML&quot;)
+model.9b&lt;-lme(response_time~SD+time+I(time^2), random=~time+I(time^2)|ID, data=WM_complete_correct, na.action=na.omit, method=&quot;ML&quot;)
+model.9c &lt;-lme(response_time~SD*time+I(time^2), random=~time+I(time^2)|ID, data=WM_complete_correct, na.action=na.omit, method=&quot;ML&quot;)
+model.9d &lt;- lme(response_time~SD*time+SD*I(time^2), random=~time+I(time^2)|ID, data=WM_complete_correct, na.action=na.omit, method=&quot;ML&quot;)
+
+anova(model.9a,model.9b, model.9c, model.9d) #Best model is the one without SD</code></pre>
+<pre><code>##          Model df      AIC      BIC    logLik   Test   L.Ratio p-value
+## model.9a     1 10 15551.67 15616.72 -7765.837                         
+## model.9b     2 11 15553.52 15625.07 -7765.758 1 vs 2 0.1581325  0.6909
+## model.9c     3 12 15555.10 15633.16 -7765.552 2 vs 3 0.4114709  0.5212
+## model.9d     4 13 15556.98 15641.54 -7765.490 3 vs 4 0.1243621  0.7244</code></pre>
+</div>
+<div id="best-model-1" class="section level3">
+<h3>best model</h3>
+<p>SD is not included</p>
+<pre class="r"><code>#best model
+summary(model.9a) #Cubic effect of time, but  effect of SD</code></pre>
+<pre><code>## Linear mixed-effects model fit by maximum likelihood
+##  Data: WM_complete_correct 
+##        AIC      BIC    logLik
+##   15551.67 15616.72 -7765.837
+## 
+## Random effects:
+##  Formula: ~time + I(time^2) | ID
+##  Structure: General positive-definite, Log-Cholesky parametrization
+##             StdDev    Corr         
+## (Intercept) 0.3322797 (Intr) time  
+## time        0.3930994  0.214       
+## I(time^2)   0.1333082 -0.234 -0.965
+## Residual    1.1262815              
+## 
+## Fixed effects: response_time ~ time + I(time^2) 
+##                  Value  Std.Error   DF  t-value p-value
+## (Intercept)  2.0929947 0.04183392 4770 50.03105  0.0000
+## time         0.1876956 0.06000297 4770  3.12811  0.0018
+## I(time^2)   -0.0737459 0.01936682 4770 -3.80785  0.0001
+##  Correlation: 
+##           (Intr) time  
+## time      -0.400       
+## I(time^2)  0.264 -0.960
+## 
+## Standardized Within-Group Residuals:
+##        Min         Q1        Med         Q3        Max 
+## -2.0976577 -0.5877625 -0.2833203  0.2624136  6.2896552 
+## 
+## Number of Observations: 4938
+## Number of Groups: 166</code></pre>
+</div>
+<div id="plotting-the-data" class="section level3">
+<h3>plotting the data</h3>
+<pre class="r"><code>#raw data plot with 95% confidence intervals
+ggplot(WM_complete_correct, aes(time, response_time, colour=SD)) + 
+  stat_summary(fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom=&quot;pointrange&quot;) + 
+  labs(y=&quot;Reaction Time (seconds)&quot;, x=&quot;Time point&quot;) + 
+  theme_bw() + scale_color_manual(values=c(&quot;red&quot;, &quot;blue&quot;)) +
+  ggtitle(&quot;Working memory RT raw data plot with 95% confidence intervals&quot;) + stat_summary(fun.y=mean, geom=&quot;line&quot;) </code></pre>
+<p><img src="WorkingMemory_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<pre class="r"><code>#fitted model (aka predictive values) plot with 95% confidence intervals
+ggplot(WM_complete_correct, aes(time, response_time, colour=SD)) + 
+  labs(y=&quot;Reaction Time (seconds)&quot;, x=&quot;Time point&quot;) +
+  ggtitle(&quot;Working memory RT model fitted (predicted) data plot with 95% confidence intervals&quot;) + 
+  theme_bw() + stat_summary(aes(y=fitted(model.9a)), fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom=&quot;pointrange&quot;) + stat_smooth(method = &quot;lm&quot;, formula  =y ~ poly(x,2))</code></pre>
+<p><img src="WorkingMemory_files/figure-html/unnamed-chunk-9-2.png" width="672" /></p>
+</div>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
