@@ -21,7 +21,8 @@ ipak <- function(pkg){
     sapply(pkg, require, character.only = TRUE)
 } #function to see if package is installed. Will download if not, and then opens it.
 
-packages <- c("data.table", "lubridate", "anytime", "dplyr", "ggplot2", "nlme", "tidyr", "lme4", "lmerTest") #These are the extra packages needed to merge the CSV files
+packages <- c("data.table", "lubridate", "anytime", "dplyr", "ggplot2", "nlme", "tidyr", "lme4", "lmerTest", 
+              "sjPlot") #These are the extra packages needed to merge the CSV files
 suppressPackageStartupMessages(ipak(packages))
 ```
 
@@ -74,42 +75,51 @@ Maths_Complete_TIDY <- Maths_Complete_TIDY[which(Maths_Complete_TIDY$time_m > 10
 #Maths task score
 ### Which growth curve model is best?
 ```{r}
+# assessing the best random effects
+model.1a <- glmer(correct~1 + (1|ID), data=Maths_Complete_TIDY, family=binomial)
+model.1b <- glmer(correct~1 + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY, family=binomial) # best
+
+anova(model.1a, model.1b)
 
 # assessing the best time polynomial
-model.3a<-glmer(correct~1 + (1|ID), data=Maths_Complete_TIDY, family=binomial)
-model.3b<-glmer(correct~time + (1|ID), data=Maths_Complete_TIDY, family=binomial)
-model.3c<-glmer(correct~time + I(time^2) + (1|ID), data=Maths_Complete_TIDY, family=binomial) #best
-model.3d<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=Maths_Complete_TIDY, family=binomial) 
+model.3a<-glmer(correct~1 + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY, family=binomial)
+model.3b<-glmer(correct~time + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY, family=binomial)
+model.3c<-glmer(correct~time + I(time^2) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY, family=binomial) #best
+model.3d<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY, family=binomial) 
 
 anova(model.3a, model.3b, model.3c, model.3d) #quadratic effect is best 
 
+###adding sleep condition
+model.6a<-glmer(correct~time + I(time^2) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY, family=binomial)
+model.6b<-glmer(correct~SD + time + I(time^2) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY, family=binomial)
+model.6c <-  glmer(correct~SD*time + I(time^2) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY, family=binomial) #best
+model.6d <-glmer(correct~SD*time + SD*I(time^2) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY, family=binomial)
+
+anova(model.6a,model.6b,model.6c,model.6d)
+
+
 # assessing the best random effects term (taking just a linear effect of time)
-#model.4a<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=Maths_Complete_TIDY, family=binomial) 
-#model.4b<-glmer(correct~time + I(time^2) + I(time^3) + (time|ID), data=Maths_Complete_TIDY, family=binomial) 
-#anova(model.4a,model.4b) #doesn't converge
 
-#additing in variables can that explain intercept and slope variability
+model.4a<-glmer(correct~SD*time + I(time^2) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY, family=binomial) #best
+model.4b<-glmer(correct~SD*time + I(time^2) + (time|ID) + (1|order_in_test), data=Maths_Complete_TIDY, family=binomial)
+model.4c<-glmer(correct~SD*time + I(time^2) + (time|ID) + (time|order_in_test), data=Maths_Complete_TIDY, family=binomial)
+model.4d<-glmer(correct~SD*time + I(time^2) + (time*SD|ID) + (time|order_in_test), data=Maths_Complete_TIDY, family=binomial)
+model.4e<-glmer(correct~SD*time + I(time^2) + (time*SD|ID) + (time*SD|order_in_test), data=Maths_Complete_TIDY, family=binomial)
 
-model.6a<-glmer(correct~time + I(time^2) + (1|ID), data=Maths_Complete_TIDY, family=binomial) 
-model.6b<-glmer(correct~time + SD + I(time^2) + (1|ID), data=Maths_Complete_TIDY, family=binomial) 
-model.6c <-  glmer(correct~SD*time + I(time^2) + (1|ID), data=Maths_Complete_TIDY, family=binomial) #best model
-model.6d <-glmer(correct~SD*time + SD*I(time^2) + (1|ID), data=Maths_Complete_TIDY, family=binomial)
-
-anova(model.6a,model.6b,model.6c,model.6d) #best model = significant interaction between linear time effect and SDcondition
+anova(model.4a,model.4b,model.4c,model.4d, model.4c)
 ```
 
 ### best fitting growth curve model
-Bottom line: significant interaction between linear time effect and SDcondition (ie. sleep deprivation predicts a decrease over time in a linear fashion (despite the cubic effect of time))
 ```{r}
 #best model
-summary(model.6c)
+summary(model.4a)
 ```
 
 ###plotting the raw data and best model
 ```{r}
-Maths_Complete_TIDY$SD <- as.factor(Maths_Complete_TIDY$SD)
+Maths_Complete_TIDY$SD <- factor(Maths_Complete_TIDY$SD, labels = c("Control", "Sleep Deprivation"))
 
-Maths.final.model <- model.6c
+Maths.final.model <- model.4a
 #raw plot
 ggplot(Maths_Complete_TIDY, aes(time, correct, colour=SD)) + 
   stat_summary(fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + 
@@ -118,6 +128,21 @@ ggplot(Maths_Complete_TIDY, aes(time, correct, colour=SD)) +
   theme_bw() + scale_color_manual(values=c("red", "blue")) +
   stat_summary(fun.y=mean, geom="line") 
 
+ggplot(data = Maths_Complete_TIDY,  aes(time, correct, colour=SD)) + 
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width =0.1) +
+  stat_summary(fun.y=mean, geom="point")  +
+  stat_summary(fun.y=mean, geom="line")  +
+  stat_summary(fun.y = mean,geom = "point", size=4, aes(shape=SD,fill=SD)) + 
+     scale_x_continuous("Time", breaks=0:3, labels = c("22:00", "09:00", "12:30", "16:00")) +
+     scale_y_continuous("Percentage correct") +
+     scale_shape_manual(values=c(24,21)) +
+     scale_fill_manual(values=c("white","black")) +
+  scale_color_manual(values=c('black','black')) + 
+     theme_apa() +
+  theme(axis.title = element_text(face = "bold"),
+        panel.border = element_blank(),
+        axis.line = element_line(color = 'black'))
+
 #model plot
 ggplot(Maths_Complete_TIDY, aes(time, correct, colour=SD)) + 
   labs(y="Maths (correct score)", x="Time point") + 
@@ -125,6 +150,8 @@ ggplot(Maths_Complete_TIDY, aes(time, correct, colour=SD)) +
   ggtitle("Maths (score) fitted model (predicted) plot with 95% confidence intervals") +
   stat_summary(aes(y=fitted(Maths.final.model)), fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + 
   stat_smooth(method = "lm", formula  =y ~ poly(x,2))
+
+plot_model(Maths.final.model, type = "pred", terms = c("time", "SD"))
 ```
 
 #Maths RT (correct answers)
@@ -134,43 +161,46 @@ ggplot(Maths_Complete_TIDY, aes(time, correct, colour=SD)) +
 
 Maths_complete_correct <- Maths_Complete_TIDY[which(Maths_Complete_TIDY$correct == 1),]
 
-# assessing the best time polynomial
-model.7a<-lme(time_m~1, random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="ML")
-model.7b<-lme(time_m~time, random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="ML")
-model.7c<-lme(time_m~time+I(time^2), random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="ML")
-model.7d<-lme(time_m~time+I(time^2)+I(time^3), random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="ML") 
 
-anova(model.7a, model.7b, model.7c, model.7d) #best to have cubic effect
+# assessing the best random effects
+model.1a <- lmer(time_m~1 + (1|ID), data=Maths_Complete_TIDY)
+model.1b <- lmer(time_m~1 + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY) # best
+anova(model.1a, model.1b)
+
+# assessing the best time polynomial
+model.7a <- lmer(time_m~1 + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY)
+model.7b <- lmer(time_m~time + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY)
+model.7c <- lmer(time_m~time + I(time^2) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY)
+model.7d <- lmer(time_m~time + I(time^2) + I(time^3) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY) #best
+anova(model.7a, model.7b, model.7c, model.7d)
+
+
+#adding sleep condition
+model.9a<-lmer(time_m~time + I(time^2) + I(time^3) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY)
+model.9b<-lmer(time_m~SD + time + I(time^2) + I(time^3) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY)
+model.9c <-lmer(time_m~SD*time + I(time^2) + I(time^3) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY) #best
+model.9d <- lmer(time_m~SD*time + SD*I(time^2) + I(time^3) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY)
+model.9e <- lmer(time_m~SD*time + SD*I(time^2) + SD*I(time^3) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY)
+
+anova(model.9a,model.9b, model.9c, model.9d, model.9e) 
 
 # assessing the best random effects term
-model.8a<-lme(time_m~time+I(time^2)+I(time^3), random=~1|ID, data=Maths_complete_correct, na.action=na.omit, method="ML") 
+model.8a<-lmer(time_m~SD*time + I(time^2) + I(time^3) + (1|ID) + (1|order_in_test), data=Maths_Complete_TIDY) 
+model.8b<-lmer(time_m~SD*time + I(time^2) + I(time^3) + (time|ID) + (1|order_in_test), data=Maths_Complete_TIDY)
+model.8c<-lmer(time_m~SD*time + I(time^2) + I(time^3) + (time|ID) + (time|order_in_test), data=Maths_Complete_TIDY)
 
-model.8b<-lme(time_m~time+I(time^2)+I(time^3), random=~time|ID, data=Maths_complete_correct, na.action=na.omit, method="ML") 
-anova(model.8a,model.8b) #having random slopes is best #having random effects is better
-
-#additing in variables can that explain intercept and slope variability
-model.9a<-lme(time_m~time+I(time^2)+I(time^3), random=~time|ID, data=Maths_complete_correct, na.action=na.omit, method="ML") 
-model.9b<-lme(time_m~time+SD+I(time^2)+I(time^3), random=~time|ID, data=Maths_complete_correct, na.action=na.omit, method="ML") 
-model.9c <-lme(time_m~time*SD+I(time^2)+I(time^3), random=~time|ID, data=Maths_complete_correct, na.action=na.omit, method="ML")
-model.9d <- lme(time_m~time*SD+SD*I(time^2)+I(time^3), random=~time|ID, data=Maths_complete_correct, na.action=na.omit, method="ML") 
-model.9e <- lme(time_m~time*SD+SD*I(time^2)+SD*I(time^3), random=~time|ID, data=Maths_complete_correct, na.action=na.omit, method="ML") 
-
-
-anova(model.9a,model.9b, model.9c, model.9d, model.9e) # Best model has interactions with SD and all time polynomials
-
-#best model
-summary(model.9e) #SD interacts with time polynomials with random slopes for time within individuals
+anova(model.8a,model.8b, model.8c) 
 ```
 
 ### best growth curve model for the RT in the maths task (correct answers only)
 ```{r}
 #best model
-summary(model.9e) #SD interacts with time polynomials with random slopes for time within individuals
+summary(model.9c)
 ```
 
 ### plotting the raw reaction times and best data for correct maths answers
 ```{r}
-Maths_complete_correct$SD <- as.factor(Maths_complete_correct$SD)
+Maths_complete_correct$SD <- factor(Maths_complete_correct$SD, labels = c("Control", "Sleep Deprivation"))
 
 #raw data plot with 95% confidence intervals
 ggplot(Maths_complete_correct, aes(time, time_m, colour=SD)) + 
@@ -180,10 +210,28 @@ ggplot(Maths_complete_correct, aes(time, time_m, colour=SD)) +
   theme_bw() + scale_color_manual(values=c("red", "blue")) +
   stat_summary(fun.y=mean, geom="line") 
 
+ggplot(data = Maths_complete_correct,  aes(time, time_m, colour=SD)) + 
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width =0.1) +
+  stat_summary(fun.y=mean, geom="point")  +
+  stat_summary(fun.y=mean, geom="line")  +
+  stat_summary(fun.y = mean,geom = "point", size=4, aes(shape=SD,fill=SD)) + 
+     scale_x_continuous("Time", breaks=0:3, labels = c("22:00", "09:00", "12:30", "16:00")) +
+     scale_y_continuous("Answer time (ms)") +
+     scale_shape_manual(values=c(24,21)) +
+     scale_fill_manual(values=c("white","black")) +
+  scale_color_manual(values=c('black','black')) + 
+     theme_apa() +
+  theme(axis.title = element_text(face = "bold"),
+        panel.border = element_blank(),
+        axis.line = element_line(color = 'black'))
+
 #fitted model (aka predictive values) plot with 95% confidence intervals
 ggplot(Maths_complete_correct, aes(time, time_m, colour=SD)) + 
   labs(y="Reaction Time (ms)", x="Time point") + 
     ggtitle("MATHS RT model fitted plot with 95% confidence intervals") + 
-  theme_bw() + stat_summary(aes(y=fitted(model.9e)), fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + stat_smooth(method = "lm", formula  =y ~ poly(x,3))
+  theme_bw() + stat_summary(aes(y=fitted(model.9c)), fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + stat_smooth(method = "lm", formula  =y ~ poly(x,3))
+
+plot_model(model.9c, type = "pred", terms = c("time", "SD"))
+
 ```
 

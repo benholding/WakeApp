@@ -1,0 +1,28 @@
+WakeApp! Measuring the cognitive effects of sleep deprivation using a mobile phone application
+========================================================
+author: Benjamin Holding
+date: 3th December 2017
+autosize: true
+
+First Slide
+========================================================
+
+For more details on authoring R presentations please visit <https://support.rstudio.com/hc/en-us/articles/200486468>.
+
+- Bullet 1
+- Bullet 2
+- Bullet 3
+
+Slide With Code
+========================================================
+
+```{r}
+summary(cars)
+```
+
+Slide With Plot
+========================================================
+
+```{r, echo=FALSE}
+plot(cars)
+```

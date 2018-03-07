@@ -22,7 +22,7 @@ ipak <- function(pkg){
     sapply(pkg, require, character.only = TRUE)
 } #function to see if package is installed. Will download if not, and then opens it.
 
-packages <- c("data.table", "lubridate", "anytime", "dplyr", "ggplot2", "nlme", "tidyr", "lme4", "lmerTest") #These are the extra packages needed to merge the CSV files
+packages <- c("data.table", "lubridate", "anytime", "dplyr", "ggplot2", "nlme", "tidyr", "lme4", "lmerTest", "sjPlot") #These are the extra packages needed to merge the CSV files
 suppressPackageStartupMessages(ipak(packages))
 ```
 
@@ -68,66 +68,95 @@ data.check <- as.data.frame(unique(STM_Complete_TIDY[,c(12,15,16)]))
 data.check$ID <- as.integer(data.check$ID)
 data.check2 <- inner_join(data.check, slesi.key, by = "ID")
 identical(data.check2$SD.x, data.check2$SD.y) #this checks that all the participants have the correct SD coding
+
+#removing rows where word is > 24
+STM_Complete_TIDY <- STM_Complete_TIDY[which(STM_Complete_TIDY$word < 25 ),]
 ```
 
-#multileveling the STM data
+#Analysis on overall score
 ```{r}
+# assessing the best random intercepts
+model.2a <- glmer(correct~1 + (1|ID), data=STM_Complete_TIDY, family=binomial)
+model.2b <- glmer(correct~1 + (1|ID) + (1|word_pool),  data=STM_Complete_TIDY, family=binomial)
+model.2c <- glmer(correct~1 + (1|ID) + (1|word),  data=STM_Complete_TIDY, family=binomial) #best
+model.2d <- glmer(correct~1 + (1|ID) + (1|recall_session),  data=STM_Complete_TIDY, family=binomial)
+model.2e <- glmer(correct~1 + (1|ID) + (1|recall_session) + (1|word),  data=STM_Complete_TIDY, family=binomial)
+
+anova(model.2a, model.2b, model.2c, model.2d, model.2e) #best to include order of words as random effect
 
 # assessing the best time polynomial
-model.3a<-glmer(correct~1 + (1|ID), data=STM_Complete_TIDY, family=binomial)
-model.3b<-glmer(correct~time + (1|ID), data=STM_Complete_TIDY, family=binomial)
-model.3c<-glmer(correct~time + I(time^2) + (1|ID), data=STM_Complete_TIDY, family=binomial)
-model.3d<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=STM_Complete_TIDY, family=binomial)
+model.3a<-glmer(correct~1 + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial)
+model.3b<-glmer(correct~time + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial)
+model.3c<-glmer(correct~time + I(time^2) + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial)
+model.3d<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial) #best
 
 anova(model.3a, model.3b, model.3c,model.3d) #Cubic effect (model.3d) is best
 
-# assessing the best random effects term (taking just a linear effect of time)
-model.4a<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID), data=STM_Complete_TIDY, family=binomial) 
-model.4b<-glmer(correct~time + I(time^2) + I(time^3) + (time|ID), data=STM_Complete_TIDY, family=binomial)
-model.4c<-glmer(correct~time + I(time^2) + I(time^3) + (time+I(time^2)|ID), data=STM_Complete_TIDY, family=binomial)
-#model.4d<-glmer(correct~time + I(time^2) + I(time^3) + (time+I(time^2)+ I(time^3)|ID), data=STM_Complete_TIDY, family=binomial)
+#adding in sleep condition
 
-anova(model.4a,model.4b, model.4c) #Quadratic/cubic random effects is best, but sig. convergence problem and takes SO long to run. let's go with quadratic
+model.6a<-glmer(correct~time + I(time^2) + I(time^3) + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial)
+model.6b<-glmer(correct~time + I(time^2) + I(time^3) +SD + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial)
+model.6c <-glmer(correct~time*SD + I(time^2) + I(time^3) + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial)
+model.6d <- glmer(correct~time*SD + I(time^2)*SD + I(time^3) + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial)
+model.6e <- glmer(correct~time*SD + I(time^2)*SD + I(time^3)*SD + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial) #best
 
-#additing in variables can that explain intercept and slope variability
+anova(model.6a,model.6b, model.6c, model.6d, model.6e) #SD explains cubic effect of time
 
-model.6a<-glmer(correct~time + I(time^2) + I(time^3) + (time|ID), data=STM_Complete_TIDY, family=binomial)
-model.6b<-glmer(correct~time + I(time^2) + I(time^3) +SD + (time|ID), data=STM_Complete_TIDY, family=binomial)
+#adding in whether encoded or dummy word
 
-anova(model.6a,model.6b) #SD predicts intercept :(
+model.7a <- glmer(correct~time*SD + I(time^2)*SD + I(time^3)*SD + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial) 
+model.7b <- glmer(correct~endcoding + time*SD + I(time^2)*SD + I(time^3)*SD + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial) 
+model.7c <- glmer(correct~endcoding*time*SD + I(time^2)*SD + I(time^3)*SD + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial) 
+model.7d <- glmer(correct~endcoding*time*SD + endcoding*I(time^2)*SD + I(time^3)*SD + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial) 
+model.7e <- glmer(correct~endcoding*time*SD + endcoding*I(time^2)*SD + endcoding*I(time^3)*SD + (1|ID) + (1|recall_session) + (1|word), data=STM_Complete_TIDY, family=binomial) 
 
-model.6c <-glmer(correct~time*SD + I(time^2) + I(time^3) + (time|ID), data=STM_Complete_TIDY, family=binomial)
-anova(model.6a,model.6c)  #SD explains linear effect of time
-
-model.6d <- glmer(correct~time*SD + I(time^2)*SD + I(time^3) + (time|ID), data=STM_Complete_TIDY, family=binomial)
-anova(model.6a,model.6d) #SD explains quadratic effect of time
-
-model.6e <- glmer(correct~time*SD + I(time^2)*SD + I(time^3)*SD + (time|ID), data=STM_Complete_TIDY, family=binomial)
-anova(model.6a,model.6e) #SD explains cubic effect of time
+anova(model.7a,model.7b,model.7c,model.7d,model.7e) 
 ```
 
 #The best fitting model
 ```{r}
-summary(model.6e)
+summary(model.7d)
 ```
 
 
 #plotting the final model
 ```{r}
-STM_Complete_TIDY$SD <- as.factor(STM_Complete_TIDY$SD)
+STM_Complete_TIDY$SD <- factor(STM_Complete_TIDY$SD, labels = c("Control", "Sleep Deprivation"))
+STM_Complete_TIDY$endcoding <- factor(STM_Complete_TIDY$endcoding, labels = c("Dummy", "Encoded"))
 
-STM.final.model <- glmer(correct~time*SD + I(time^2)*SD + I(time^3)*SD + (time|ID), data=STM_Complete_TIDY, family=binomial)
+STM.final.model <- model.7d
 
 #raw data plot with 95% confidence intervals
 ggplot(STM_Complete_TIDY, aes(time, correct, colour=SD)) + 
   stat_summary(fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + 
   labs(y="correct", x="Time point") +
   ggtitle("STM raw data plot with 95% confidence intervals") + 
-  theme_bw() + scale_color_manual(values=c("red", "blue")) + stat_summary(fun.y=mean, geom="line") 
+  theme_bw() + scale_color_manual(values=c("red", "blue")) + stat_summary(fun.y=mean, geom="line") +
+  facet_wrap( ~ endcoding)
+
+ggplot(data = STM_Complete_TIDY,  aes(time, correct, colour=SD)) + 
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width =0.1) +
+  stat_summary(fun.y=mean, geom="point")  +
+  stat_summary(fun.y=mean, geom="line")  +
+  stat_summary(fun.y = mean,geom = "point", size=4, aes(shape=SD,fill=SD)) + 
+     scale_x_continuous("Time", breaks=0:3, labels = c("22:00", "09:00", "12:30", "16:00")) +
+     scale_y_continuous("Percentage correct") +
+     scale_shape_manual(values=c(24,21)) +
+     scale_fill_manual(values=c("white","black")) +
+  scale_color_manual(values=c('black','black')) + 
+     theme_apa() +
+  theme(axis.title = element_text(face = "bold"),
+        panel.border = element_blank(),
+        axis.line = element_line(color = 'black')) +
+  facet_wrap( ~ endcoding)
 
 #fitted model (aka predictive values) plot with 95% confidence intervals
 ggplot(STM_Complete_TIDY, aes(time, correct, colour=SD)) + 
   labs(y="STM (correct score)", x="Time point") +
   ggtitle("STM model fitted (predicted) data plot with 95% confidence intervals") + 
-  theme_bw() + stat_summary(aes(y=fitted(STM.final.model)), fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") + stat_smooth(method = "lm", formula  =y ~ poly(x,3))
+  theme_bw() + stat_summary(aes(y=fitted(STM.final.model)), fun.data=mean_cl_normal, fun.args=list(conf.int=0.95), geom="pointrange") +
+  stat_smooth(aes(y=fitted(STM.final.model)), method = "glm", formula = y ~ poly(x,3)) + 
+  facet_wrap( ~ endcoding)
+
+plot_model(STM.final.model, type = "pred", terms = c("time", "SD", "endcoding"))
 ```
