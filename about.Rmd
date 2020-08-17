@@ -1,5 +1,0 @@
----
-title: "About Me"
----
-
-Benjamin C. Holding, PhD Student @ Karolinska Institutet.

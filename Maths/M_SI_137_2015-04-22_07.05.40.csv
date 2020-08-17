@@ -1,3 +1,0 @@
-id,date,time,t0,order_of_test,time_start_battery,order_in_test,base1,base2,answer_m,time_m,correct
-SI_137,2015-04-22,07:05:40,1429679140428,3,285581,1,35,54,89,5699,1
-SI_137,2015-04-22,07:05:46,1429679140428,3,294791,2,75,51,126,9208,1
