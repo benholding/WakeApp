@@ -114,6 +114,14 @@ pre_study_sleep_hours <- pre_study_sleep %>%
 
 paste(floor(pre_study_sleep_hours$TST), round((pre_study_sleep_hours$TST-floor(pre_study_sleep_hours$TST))*60), sep=":")
 
+pre_study_sleep_hours_stdev <- pre_study_sleep %>%
+  group_by(SD) %>%
+  summarise_at(vars(TST), funs(sd(., na.rm=TRUE)/60))
+
+paste(floor(pre_study_sleep_hours_stdev$TST), round((pre_study_sleep_hours_stdev$TST-floor(pre_study_sleep_hours_stdev$TST))*60), sep=":")
+
+
+
 #assessing average finishing time for first wakeapp test
 time1 <- data$kss %>% 
   filter(order_t == 1) %>% 
@@ -123,3 +131,43 @@ time1 <- data$kss %>%
             decimal_time_sd = sd(ifelse(CLOCK < 4, CLOCK + 24, CLOCK),na.rm=T)) %>% 
   mutate(twentyfourhour_time = paste(floor(decimal_time_mean), round((decimal_time_mean-floor(decimal_time_mean))*60), sep=":"))%>% 
   mutate(twentyfourhour_time_sd = paste(floor(decimal_time_sd), round((decimal_time_sd-floor(decimal_time_sd))*60), sep=":"))
+
+#creating reaction time response distribution
+attention_hist <- ggplot(data$rt, aes(x = reaction_time)) +
+  geom_histogram(binwidth = 20) +
+  ggtitle("Simple Attention: Histogram of Response Times") +
+  xlab("Response Time (ms)") +
+  ylab("Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_minimal()
+
+Arithmetic_hist <- ggplot(data$math, aes(x = time_m)) +
+  geom_histogram(binwidth = 20) +
+  ggtitle("Arithmetic: Histogram of Response Times") +
+  xlab("Response Time (ms)") +
+  ylab("Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_minimal()
+
+#no hist since time wasn't measured
+
+wm_hist <- ggplot(data$wm, aes(x = response_time*1000)) +
+  geom_histogram(binwidth = 20) +
+  ggtitle("Working memory: Histogram of Response Times") +
+  xlab("Response Time (ms)") +
+  ylab("Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_minimal()
+
+stroop_hist <- ggplot(data$stroop, aes(x = reaction_time)) +
+  geom_histogram(binwidth = 20) +
+  ggtitle("Stroop: Histogram of Response Times") +
+  xlab("Response Time (ms)") +
+  ylab("Count") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_minimal()
+
+library(ggpubr)
+plot_histograms <- ggarrange(attention_hist,Arithmetic_hist,wm_hist,stroop_hist, ncol=2,nrow=2, common.legend=T,labels="AUTO")
+ggsave("plots/figureS7_taskhists.pdf", plot=plot_histograms, device="pdf", dpi=300, units="cm", width=25, height=20)
+
