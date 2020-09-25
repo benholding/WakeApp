@@ -161,7 +161,7 @@ gaussian_final_models=
   stroop_update=gaussian_models$stroop_update$null$re_id,
   rt_var=gaussian_models$rt_var$interaction$re_id,
   stroop_conflict_rtvar=gaussian_models$stroop_conflict_rtvar$base$re_id,
-  stroop_update_rtvar=gaussian_models$stroop_update_rtvar$sd$re_id,
+  stroop_update_rtvar=gaussian_models$stroop_update_rtvar$base$re_id,
   kss=gaussian_models$kss$interaction$re_id_ses)
 
 save(gaussian_final_models, file="data/wakeapp_gaussian_final_models.RDta")

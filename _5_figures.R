@@ -47,43 +47,45 @@ plotit = function(d, m, b, title, ylab,xlab,f) {
   
   pd <- position_dodge(0.2) 
   
-  ggplot(d, aes(x=as.numeric(session), y=pred, colour=sd_grp))  +
+  ggplot(d, aes(x=as.numeric(session), y=pred, colour=sd_grp, shape = sd_grp))  +
     geom_line(linetype="dashed") +
     geom_line(linetype="solid", aes(x=as.numeric(not_baseline_session))) +
-    scale_colour_brewer(palette = "Dark2") +
+    scale_colour_manual(values=c("#999999","#000000")) + 
     geom_pointrange(aes(ymin=lwr1, ymax=upr1), width=.1, position=pd) +
     ggtitle(title) +
     ylab(ylab) +
     xlab(xlab) +
-    guides(colour=guide_legend(title=NULL)) +
-    theme_minimal() +scale_x_continuous(labels=c("22:30", "08:00","12:30","16:30"))#+
+    guides(colour=guide_legend(title=NULL), shape = guide_legend(title=NULL)) +
+    theme_minimal() + 
+    scale_size_manual(values = c(5,1)) +
+    scale_x_continuous(labels=c("22:30", "08:00","12:30","16:30")) # +
     #facet_grid(f)
 }
 
 #### plot data ####
 
 p1=plotit(newdata$rt,models$rt, bootstrap$rt, title = NULL, 
-          ylab="Response Time (ms)",xlab="Session")
+          ylab="Response time (ms)",xlab="Session")
 p2=plotit(newdata$rt,models$rt_lapse, bootstrap$rt_lapse, title = NULL, 
           ylab="Probability of a lapse",xlab="Session")
 p3=plotit(newdata$rt,models$rt_var, bootstrap$rt_var, title = NULL, 
-          ylab="Variation (Standard Deviation)",xlab="Session")
+          ylab="Response time variation (SD)",xlab="Session")
 
 
-p4=plotit(newdata$math, models$math, bootstrap$math, title=NULL, ylab="Probability of an error",xlab="Session")
+p4=plotit(newdata$math, models$math, bootstrap$math, title=NULL, ylab="Probability of an mistake",xlab="Session")
 
 p5=plotit(newdata$math,models$math_rt, bootstrap$math_rt, title = NULL, 
           ylab="Response Time (ms)",xlab="Session")
 
-p6=plotit(newdata$stm, models$stm, bootstrap$stm, title=NULL, ylab="Probability of an error",xlab="Session")
+p6=plotit(newdata$stm, models$stm, bootstrap$stm, title=NULL, ylab="Probability of an mistake",xlab="Session")
 
-p7=plotit(newdata$wm, models$wm, bootstrap$wm, title=NULL, ylab="Probability of an error",xlab="Session")
+p7=plotit(newdata$wm, models$wm, bootstrap$wm, title=NULL, ylab="Probability of an mistake",xlab="Session")
 
 p8= plotit(newdata$kss,models$kss, bootstrap$kss, title = NULL, 
             ylab="Subjective sleepiness",xlab="Session")
 
-# p12=plotit(newdata$stroop,models$stroop_accuracy, bootstrap$stroop_accuracy, title = "Stroop", 
-#            ylab="Probability of a mistake",xlab="Test session", f = NA)
+ p9=plotit(newdata$stroop,models$stroop_accuracy, bootstrap$stroop_accuracy, title = NULL, 
+           ylab="Probability of a mistake",xlab="Test session", f = NA)
 #
 # p8=plotit(newdata$stroop,models$stroop_conflict, bootstrap$stroop_conflictRT, title = "Stroop, conflict", 
 #           ylab="Response Time (ms)",xlab="Test session", f = ~congruent)
@@ -91,11 +93,11 @@ p8= plotit(newdata$kss,models$kss, bootstrap$kss, title = NULL,
 # p9=plotit(newdata$stroop,models$stroop_update, bootstrap$stroop_updateRT, title = "Stroop, update", 
 #           ylab="Response Time (ms)",xlab="Test session", f = ~cognitive_update)
 # 
-# p10=plotit(newdata$stroop,models$stroop_conflict_rtvar, bootstrap$stroop_conflict_rtvar, title = "Stroop, conflict rtvar", 
-#           ylab="variability",xlab="Test session", f = ~congruent)
+ p10=plotit(newdata$stroop,models$stroop_conflict_rtvar, bootstrap$stroop_conflict_rtvar, title = NULL, 
+         ylab="Response time variation (SD)",xlab="Session", f = ~congruent)
 # 
-# p11=plotit(newdata$stroop,models$stroop_update_rtvar, bootstrap$stroop_update_rtvar, title = "Stroop, update rtvar", 
-#           ylab="variability",xlab="Test session", f = ~cognitive_update)
+p11=plotit(newdata$stroop,models$stroop_update_rtvar, bootstrap$stroop_update_rtvar, title = NULL, 
+           ylab="Response time variation (SD)",xlab="Session", f = ~cognitive_update)
 
 library(ggpubr)
 plot_simpleattention <- ggarrange(p1,p2,p3, ncol=3,common.legend=T,labels="AUTO")
@@ -110,6 +112,9 @@ ggsave("plots/figure3_episodic.pdf", plot=plot_episodic, device="pdf", dpi=300, 
 plot_workingmemory <- p7 + theme(legend.position="top")
 ggsave("plots/figure4_workingmemory.pdf", plot=plot_workingmemory, device="pdf", dpi=300, units="cm", width=10, height=10)
 
-plot_kss <- p8 + theme(legend.position="top")
-ggsave("plots/figure5_sleepiness.pdf", plot=plot_kss, device="pdf", dpi=300, units="cm", width=10, height=10)
+plot_stroop <- ggarrange(p9,p10,p11, ncol=3,common.legend=T,labels="AUTO")
+ggsave("plots/figure5_stroop.pdf", plot=plot_stroop, device="pdf", dpi=300, units="cm", width=30, height=10)
+
+plot_kss <- p8 + theme(legend.position="top") + scale_y_continuous(limits = c(1,9), breaks = c(1:9))
+ggsave("plots/figure6_sleepiness.pdf", plot=plot_kss, device="pdf", dpi=300, units="cm", width=10, height=10)
 

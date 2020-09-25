@@ -171,3 +171,7 @@ library(ggpubr)
 plot_histograms <- ggarrange(attention_hist,Arithmetic_hist,wm_hist,stroop_hist, ncol=2,nrow=2, common.legend=T,labels="AUTO")
 ggsave("plots/figureS7_taskhists.pdf", plot=plot_histograms, device="pdf", dpi=300, units="cm", width=25, height=20)
 
+# checking if incongruent stroop is slower than congruent
+stroop_rt_congruent <- data$stroop$reaction_time[which(data$stroop$congruent == "Congruent")]
+stroop_rt_incongruent <- data$stroop$reaction_time[which(data$stroop$congruent == "Incongruent")]
+t.test(x=stroop_rt_congruent, y=stroop_rt_incongruent)
