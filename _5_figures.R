@@ -72,14 +72,14 @@ p3=plotit(newdata$rt,models$rt_var, bootstrap$rt_var, title = NULL,
           ylab="Response time variation (SD)",xlab="Session")
 
 
-p4=plotit(newdata$math, models$math, bootstrap$math, title=NULL, ylab="Probability of an mistake",xlab="Session")
+p4=plotit(newdata$math, models$math, bootstrap$math, title=NULL, ylab="Probability of a mistake",xlab="Session")
 
 p5=plotit(newdata$math,models$math_rt, bootstrap$math_rt, title = NULL, 
           ylab="Response Time (ms)",xlab="Session")
 
-p6=plotit(newdata$stm, models$stm, bootstrap$stm, title=NULL, ylab="Probability of an mistake",xlab="Session")
+p6=plotit(newdata$stm, models$stm, bootstrap$stm, title=NULL, ylab="Probability of a mistake",xlab="Session")
 
-p7=plotit(newdata$wm, models$wm, bootstrap$wm, title=NULL, ylab="Probability of an mistake",xlab="Session")
+p7=plotit(newdata$wm, models$wm, bootstrap$wm, title=NULL, ylab="Probability of a mistake",xlab="Session")
 
 p8= plotit(newdata$kss,models$kss, bootstrap$kss, title = NULL, 
             ylab="Subjective sleepiness",xlab="Session")
