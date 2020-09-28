@@ -115,6 +115,6 @@ ggsave("plots/figure4_workingmemory.pdf", plot=plot_workingmemory, device="pdf",
 plot_stroop <- ggarrange(p9,p10,p11, ncol=3,common.legend=T,labels="AUTO")
 ggsave("plots/figure5_stroop.pdf", plot=plot_stroop, device="pdf", dpi=300, units="cm", width=30, height=10)
 
-plot_kss <- p8 + theme(legend.position="top") + scale_y_continuous(limits = c(1,9), breaks = c(1:9))
+plot_kss <- p8 + theme(legend.position="top") + scale_y_continuous(limits = c(1,9), breaks = c(1:9), minor_breaks = NULL)
 ggsave("plots/figure6_sleepiness.pdf", plot=plot_kss, device="pdf", dpi=300, units="cm", width=10, height=10)
 
