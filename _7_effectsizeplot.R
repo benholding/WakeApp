@@ -117,29 +117,32 @@ forest.data <- read.csv("forestplotdata.csv", stringsAsFactors=FALSE)
 colnames(forest.data)[1] <- "Variable" #sometimes this name is changed for some reason
 
 ## Labels defining subgroups are a little indented!
-subgps <- c(2,3,4,7,10,13,14,17,18,19)
+subgps <- c(2,3,4,7,8,11,14,17,18,19,20,21,24)
 forest.data$Variable[subgps] <- paste("  ",forest.data$Variable[subgps]) 
 
 ## The rest of the columns in the table. 
-tabletext <- cbind(c("Cognitive task","\n",forest.data$Variable), 
+tabletext <- cbind(c("Cognitive test","\n",forest.data$Variable), 
                    c("Cliff's delta","\n",forest.data$Cliffs.delta), 
                    c("Odds ratio","\n",forest.data$Odds.ratio))
 
+tabletext[20,2] <-"0.10"
+
 #making forestplot
-png(file.path("Figures\\Forestplot.png"),width=960, height=640)
-forestplot(labeltext=tabletext, graph.pos=2, 
-           mean=c(NA,NA,forest.data$Point.Estimate), 
-           lower=c(NA,NA,forest.data$Low), upper=c(NA,NA,forest.data$High),
-           title="Cohen's d (95% CI)",
-           xlab="<---Decrease---    ---Increase--->                                                         ",
-           hrzl_lines=list("2.5" = gpar(lwd=1, col="#99999922"), 
-                           "9" = gpar(lwd=60, lineend="butt", columns=c(2:4), col="#99999922"),
-                           "16" = gpar(lwd=100, lineend="butt", columns=c(2:4), col="#99999922")),
-           txt_gp=fpTxtGp(label=gpar(cex=1.25),
-                          ticks=gpar(cex=1.1),
-                          xlab=gpar(cex = 1.2),
-                          title=gpar(cex = 1.2)),
-           col=fpColors(box="black", lines="black", zero = "gray50"),
-           zero=0, cex=0.9, lineheight = "auto", boxsize=0.3, colgap=unit(6,"mm"),
-           lwd.ci=2, ci.vertices=TRUE, ci.vertices.height = 0.3)
+png(file.path("Plots/Figure7_Forestplot.png"),width=960, height=640)
+forestplot::forestplot(labeltext=tabletext, graph.pos=2, 
+                       mean=c(NA,NA,forest.data$Point.Estimate), 
+                       lower=c(NA,NA,forest.data$Low), upper=c(NA,NA,forest.data$High),
+                       title="Cohen's d (95% CI)",
+                       xlab="Effect size of change in cognitive performance following sleep deprivation",
+                       hrzl_lines=list("2.5" = grid::gpar(lwd=1, col="#99999922"), 
+                                       "10" = grid::gpar(lwd=100, lineend="butt", columns=c(2:4), col="#99999922"),
+                                       "16" = grid::gpar(lwd=80, lineend="butt", columns=c(2:4), col="#99999922"),
+                                       "26" = grid::gpar(lwd=52, lineend="butt", columns=c(2:4), col="#99999922")),
+                       txt_gp=forestplot::fpTxtGp(label=grid::gpar(cex=1.25),
+                                                  ticks=grid::gpar(cex=1.1),
+                                                  xlab=grid::gpar(cex = 1.2),
+                                                  title=grid::gpar(cex = 1.2)),
+                       col=forestplot::fpColors(box="black", lines="black", zero = "gray50"),
+                       zero=0, cex=0.9, lineheight = "auto", boxsize=0.3, colgap=grid::unit(6,"mm"),
+                       lwd.ci=2, ci.vertices=TRUE, ci.vertices.height = 0.3)
 dev.off()

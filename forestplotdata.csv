@@ -1,0 +1,25 @@
+Variable,Point Estimate,Low,High,Cliffs delta,Odds ratio
+Simple Attention,,,,,
+RT,0.69,0.38,0.99,0.37,
+RTV,0.53,0.23,0.82,0.29,
+Lapse (>1000ms),0.82,0.57,1.08,0.44,4.46
+,,,,,
+Arithmetic,,,,,
+Mistakes,0.16,0.05,0.27,0.09,1.34
+RT,0.08,-0.22,0.39,0.05,
+,,,,,
+Episodic memory,,,,,
+Mistakes,0.24,0.17,0.31,0.13,1.54
+,,,,,
+Working Memory,,,,,
+Mistakes,0.15,0.04,0.27,0.09,1.32
+,,,,,
+Stroop,,,,,
+Mistakes,0.07,-0.01,0.15,0.04,1.13
+Cog. confl. RT,0.18,-0.13,0.48,0.1,
+Cog. confl. RTV,0.17,-0.14,0.47,0.09,
+Beh. adj. RT,-0.28,-0.59,0.02,-0.16,
+Beh. adj. RTV,0.26,-0.05,0.56,0.15,
+,,,,,
+Sleepiness,,,,,
+Rating,1.58,1.23,1.92,0.74,
