@@ -69,13 +69,13 @@ p1=plotit(newdata$rt,models$rt, bootstrap$rt, title = NULL,
 p2=plotit(newdata$rt,models$rt_lapse, bootstrap$rt_lapse, title = NULL, 
           ylab="Probability of a lapse",xlab="Session")
 p3=plotit(newdata$rt,models$rt_var, bootstrap$rt_var, title = NULL, 
-          ylab="Response time variation (SD)",xlab="Session")
+          ylab="Response time variability (SD)",xlab="Session")
 
 
 p4=plotit(newdata$math, models$math, bootstrap$math, title=NULL, ylab="Probability of a mistake",xlab="Session")
 
 p5=plotit(newdata$math,models$math_rt, bootstrap$math_rt, title = NULL, 
-          ylab="Response Time (ms)",xlab="Session")
+          ylab="Response time (ms)",xlab="Session")
 
 p6=plotit(newdata$stm, models$stm, bootstrap$stm, title=NULL, ylab="Probability of a mistake",xlab="Session")
 
@@ -93,11 +93,12 @@ p8= plotit(newdata$kss,models$kss, bootstrap$kss, title = NULL,
 # p9=plotit(newdata$stroop,models$stroop_update, bootstrap$stroop_updateRT, title = "Stroop, update", 
 #           ylab="Response Time (ms)",xlab="Test session", f = ~cognitive_update)
 # 
- p10=plotit(newdata$stroop,models$stroop_conflict_rtvar, bootstrap$stroop_conflict_rtvar, title = NULL, 
-         ylab="Response time variation (SD)",xlab="Session", f = ~congruent)
+p10=plotit(newdata$stroop,models$stroop_conflict_rtvar, bootstrap$stroop_conflict_rtvar, title = NULL, 
+         ylab="Response time variability (SD)",xlab="Session", f = ~congruent) +ylim(320,500)
 # 
 p11=plotit(newdata$stroop,models$stroop_update_rtvar, bootstrap$stroop_update_rtvar, title = NULL, 
-           ylab="Response time variation (SD)",xlab="Session", f = ~cognitive_update)
+           ylab="Response time variability (SD)",xlab="Session", f = ~cognitive_update) +ylim(320,500)
+# 
 
 library(ggpubr)
 plot_simpleattention <- ggarrange(p1,p2,p3, ncol=3,common.legend=T,labels="AUTO")
