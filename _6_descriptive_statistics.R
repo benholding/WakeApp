@@ -32,6 +32,18 @@ all_participants_with_ages_and_screening %>%
 
 t.test(chronotype_numeric ~ SD, all_participants_with_ages_and_screening)
 
+#other demographics split by condition
+# AGE
+key %>%	
+  group_by(SD) %>%
+  summarise_at(vars(Age), funs(mean(., na.rm=TRUE),
+                               sd(., na.rm=TRUE)))
+
+# GENDER
+key %>%	
+  group_by(SD) %>%
+  tally(Woman)
+
 # stroop raw data plots
 library(ggplot2)
 
