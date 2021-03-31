@@ -98,16 +98,25 @@ ggplot(stroop_UpdateRT_plot_data, aes(x=as.numeric(session), y=mean_update_gain,
 # prior sleep
 actigraphs <- read.csv("SleSI_actigraphy_Complete_2.csv")
 actigraphs$Morning <- as.numeric(as.character(actigraphs$Morning))
-actigraphs2 <- cbind(actigraphs$FP, actigraphs$SD., actigraphs$Morning, actigraphs$Time.in.bed..min., actigraphs$Assumed.sleep.time..min.)
-colnames(actigraphs2) <- c("ID", "SD", "Night", "TIB", "TST")
+actigraphs2 <- cbind(actigraphs$FP, actigraphs$SD., actigraphs$Morning, actigraphs$Time.in.bed..min., actigraphs$Assumed.sleep.time..min.,actigraphs$Sleep.onset.time, actigraphs$Final.wake.time)
+colnames(actigraphs2) <- c("ID", "SD", "Night", "TIB", "TST", "sleep_start_time", "sleep_end_time")
 actigraphs2 <- as.data.frame(actigraphs2)
 actigraphs2$ID <- as.integer(actigraphs2$ID)
+actigraphs2$SD<- as.integer(actigraphs2$SD)
+actigraphs2$TST <- as.numeric(actigraphs2$TST)
 
 actigraphs_and_key_data <- left_join(key, actigraphs2, by = c("ID", "SD"))
 
-#average time in bed per participant prior
 temp1 <- actigraphs_and_key_data[which(actigraphs_and_key_data$Night==4),]
 temp2 <- temp1[which(temp1$SD==0),] #some data NA due to missing actigraphy data
+
+#average time in bed per participant on final night (so only control participants here)
+library(lubridate)
+lubridate::parse_date_time(temp2$sleep_start_time, " %d-%b-%y %H:%M:%S") %>% format("%H:%M:%S") %>% hms() %>% period_to_seconds() %>% ifelse(.<43200, .+86400, .) %>% mean(na.rm=T) %>% seconds_to_period() #23H 44M 38.4050632911385S
+lubridate::parse_date_time(temp2$sleep_start_time, " %d-%b-%y %H:%M:%S") %>% format("%H:%M:%S") %>% hms() %>% period_to_seconds() %>% ifelse(.<43200, .+86400, .) %>% sd(na.rm=T) %>% seconds_to_period() #1H 1M 10.0498058486796S
+
+lubridate::parse_date_time(temp2$sleep_end_time, " %d-%b-%y %H:%M:%S") %>% format("%H:%M:%S") %>% hms() %>% period_to_seconds() %>% mean(na.rm=T) %>% seconds_to_period() #7H 36M 42.7721518987346S
+lubridate::parse_date_time(temp2$sleep_end_time, " %d-%b-%y %H:%M:%S") %>% format("%H:%M:%S") %>% hms() %>% period_to_seconds() %>% sd(na.rm=T) %>% seconds_to_period() #39M 54.449227122142S
 
 # sleep duration for controls day prior
 ## mean
@@ -116,6 +125,35 @@ paste(floor(WakeApp.TST), round((WakeApp.TST-floor(WakeApp.TST))*60), sep=":")
 
 ## standard deviation
 sd(temp2$TST, na.rm = T)
+
+##sleep duration for both conditions day on penultimate night
+
+temp3 <- actigraphs_and_key_data[which(actigraphs_and_key_data$Night==3),]
+temp3_controls <- temp3[which(temp3$SD==0),] #some data NA due to missing actigraphy data
+temp3_TSD <- temp3[which(temp3$SD==1),]
+
+night3_controls <- mean(temp3_controls$TST, na.rm = T)/60
+paste(floor(night3_controls), round((night3_controls-floor(night3_controls))*60), sep=":")
+sd(temp3_controls$TST, na.rm = T)
+
+night3_TSD <- mean(temp3_TSD$TST, na.rm = T)/60
+paste(floor(night3_TSD), round((night3_TSD-floor(night3_TSD))*60), sep=":")
+sd(temp3_TSD$TST, na.rm = T)
+
+#falling asleep and waking up times - controls
+lubridate::parse_date_time(temp3_controls$sleep_start_time, " %d-%b-%y %H:%M:%S") %>% format("%H:%M:%S") %>% hms() %>% period_to_seconds() %>% ifelse(.<43200, .+86400, .) %>% mean(na.rm=T) %>% seconds_to_period() #23:42:23
+lubridate::parse_date_time(temp3_controls$sleep_start_time, " %d-%b-%y %H:%M:%S") %>% format("%H:%M:%S") %>% hms() %>% period_to_seconds() %>% ifelse(.<43200, .+86400, .) %>% sd(na.rm=T) %>% seconds_to_period() 
+
+lubridate::parse_date_time(temp3_controls$sleep_end_time, " %d-%b-%y %H:%M:%S") %>% format("%H:%M:%S") %>% hms() %>% period_to_seconds() %>% mean(na.rm=T) %>% seconds_to_period() #07:34:13
+lubridate::parse_date_time(temp3_controls$sleep_end_time, " %d-%b-%y %H:%M:%S") %>% format("%H:%M:%S") %>% hms() %>% period_to_seconds() %>% sd(na.rm=T) %>% seconds_to_period()
+
+#falling asleep and waking up times - TSD
+lubridate::parse_date_time(temp3_TSD$sleep_start_time, " %d-%b-%y %H:%M:%S") %>% format("%H:%M:%S") %>% hms() %>% period_to_seconds() %>% ifelse(.<43200, .+86400, .) %>% mean(na.rm=T) %>% seconds_to_period() #23:42:49
+lubridate::parse_date_time(temp3_TSD$sleep_start_time, " %d-%b-%y %H:%M:%S") %>% format("%H:%M:%S") %>% hms() %>% period_to_seconds() %>% ifelse(.<43200, .+86400, .) %>% sd(na.rm=T) %>% seconds_to_period() 
+
+lubridate::parse_date_time(temp3_TSD$sleep_end_time, " %d-%b-%y %H:%M:%S") %>% format("%H:%M:%S") %>% hms() %>% period_to_seconds() %>% mean(na.rm=T) %>% seconds_to_period() #07:23:34
+lubridate::parse_date_time(temp3_TSD$sleep_end_time, " %d-%b-%y %H:%M:%S") %>% format("%H:%M:%S") %>% hms() %>% period_to_seconds() %>% sd(na.rm=T) %>% seconds_to_period()
+
 
 #comparing nights 1-3 between conditions
 pre_study_sleep <- actigraphs_and_key_data[which(actigraphs_and_key_data$Night!=4),]

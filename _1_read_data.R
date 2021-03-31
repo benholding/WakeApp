@@ -19,7 +19,7 @@ prepare_data = function(d) {
 
 data = list()
 data$math = read_csv("arithmetic_data.csv") %>% prepare_data()
-data$rt = read_csv("simple_attention_data.csv") %>% prepare_data()
+data$rt = read_csv("simple_attention_data.csv") %>% prepare_data() %>% mutate(false_responses = if_else(is.na(false_responses), 0, 1))
 data$stm =  read_csv("episodic_memory_data.csv") %>% prepare_data()
 data$wm = read_csv("working_memory_data.csv") %>% prepare_data()
 data$stroop = read_csv("Stroop_data.csv") %>% prepare_data()
